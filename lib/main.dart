@@ -30,6 +30,7 @@ Future<void> main(List<String> args) async {
     backgroundColor: Colors.transparent,
   );
   await windowManager.waitUntilReadyToShow(options, () async {
+    await Window.setEffect(effect: WindowEffect.mica);
     await windowManager.show();
     await windowManager.focus();
   });
@@ -140,82 +141,87 @@ class _EditorAppState extends State<_EditorApp> {
   Widget build(BuildContext context) {
     return EditorEnvironmentProvider(
       environment: environment,
-      child: Scaffold(
-        backgroundColor: Theme.of(context).colorScheme.background,
-        appBar: WindowBar(
-          title: const WindowTitle(),
-          menus: [
-            SubmenuButton(
-              menuChildren: [
-                ListenableBuilder(
-                  listenable: Listenable.merge([
-                    environment.editorFile,
-                    environment.textController,
-                  ]),
-                  builder: (context, _) => MenuItemButton(
-                    onPressed: environment.hasEdits ||
-                            environment.editorFile.file != null
-                        ? environment.closeFile
-                        : null,
-                    child: const Text("New"),
+      child: WindowEffectSetter(
+        effect: WindowEffect.mica,
+        theme: Theme.of(context),
+        child: Scaffold(
+          backgroundColor:
+              Colors.transparent, //Theme.of(context).colorScheme.background,
+          appBar: WindowBar(
+            title: const WindowTitle(),
+            menus: [
+              SubmenuButton(
+                menuChildren: [
+                  ListenableBuilder(
+                    listenable: Listenable.merge([
+                      environment.editorFile,
+                      environment.textController,
+                    ]),
+                    builder: (context, _) => MenuItemButton(
+                      onPressed: environment.hasEdits ||
+                              environment.editorFile.file != null
+                          ? environment.closeFile
+                          : null,
+                      child: const Text("New"),
+                    ),
                   ),
-                ),
-                MenuItemButton(
-                  onPressed: () async {
-                    final result = await FilePicker.platform.pickFiles();
-                    if (result == null) return;
+                  MenuItemButton(
+                    onPressed: () async {
+                      final result = await FilePicker.platform.pickFiles();
+                      if (result == null) return;
 
-                    environment.openFile(File(result.files.first.path!));
-                  },
-                  child: const Text("Open"),
-                ),
-              ],
-              child: const Text("File"),
-            ),
-            SubmenuButton(
-              menuChildren: [
-                ValueListenableBuilder(
-                  valueListenable: environment.enableLineNumberColumnNotifier,
-                  builder: (context, value, _) {
-                    return MenuItemButton(
-                      onPressed: () {
-                        environment.enableLineNumberColumn = !value;
-                      },
-                      trailingIcon: value
-                          ? const Icon(Icons.check)
-                          : const SizedBox.square(dimension: 24),
-                      child: const Text("Line numbers"),
-                    );
-                  },
-                ),
-                ValueListenableBuilder(
-                  valueListenable: environment.enableLineHighlightingNotifier,
-                  builder: (context, value, _) {
-                    return MenuItemButton(
-                      onPressed: () {
-                        environment.enableLineHighlighting = !value;
-                      },
-                      trailingIcon: value
-                          ? const Icon(Icons.check)
-                          : const SizedBox.square(dimension: 24),
-                      child: const Text("Line highlight"),
-                    );
-                  },
-                ),
-              ],
-              child: const Text("View"),
-            ),
-          ],
-        ),
-        body: Theme(
-          data: Theme.of(context).copyWith(
-            textTheme: GoogleFonts.firaCodeTextTheme(),
+                      environment.openFile(File(result.files.first.path!));
+                    },
+                    child: const Text("Open"),
+                  ),
+                ],
+                child: const Text("File"),
+              ),
+              SubmenuButton(
+                menuChildren: [
+                  ValueListenableBuilder(
+                    valueListenable: environment.enableLineNumberColumnNotifier,
+                    builder: (context, value, _) {
+                      return MenuItemButton(
+                        onPressed: () {
+                          environment.enableLineNumberColumn = !value;
+                        },
+                        trailingIcon: value
+                            ? const Icon(Icons.check)
+                            : const SizedBox.square(dimension: 24),
+                        child: const Text("Line numbers"),
+                      );
+                    },
+                  ),
+                  ValueListenableBuilder(
+                    valueListenable: environment.enableLineHighlightingNotifier,
+                    builder: (context, value, _) {
+                      return MenuItemButton(
+                        onPressed: () {
+                          environment.enableLineHighlighting = !value;
+                        },
+                        trailingIcon: value
+                            ? const Icon(Icons.check)
+                            : const SizedBox.square(dimension: 24),
+                        child: const Text("Line highlight"),
+                      );
+                    },
+                  ),
+                ],
+                child: const Text("View"),
+              ),
+            ],
           ),
-          child: const TextEditor(),
-        ),
-        bottomNavigationBar: const SizedBox(
-          height: 24,
-          child: EditorToolbar(),
+          body: Theme(
+            data: Theme.of(context).copyWith(
+              textTheme: GoogleFonts.firaCodeTextTheme(),
+            ),
+            child: const TextEditor(),
+          ),
+          bottomNavigationBar: const SizedBox(
+            height: 24,
+            child: EditorToolbar(),
+          ),
         ),
       ),
     );

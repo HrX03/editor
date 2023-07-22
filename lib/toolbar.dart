@@ -99,6 +99,7 @@ class EditorToolbar extends StatelessWidget {
             );
           },
         ),
+        const SizedBox(width: 16),
       ],
     );
   }
