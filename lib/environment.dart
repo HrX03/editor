@@ -27,8 +27,8 @@ class EditorEnvironment {
   }
 
   final EditorFile editorFile = EditorFile();
-  final HighlightingTextEditingController textController =
-      HighlightingTextEditingController();
+  final EditorTextEditingController textController =
+      EditorTextEditingController();
   final UndoHistoryController undoController = UndoHistoryController();
   final ValueNotifier<String?> _fileLanguage = ValueNotifier<String?>(null);
   bool _fileDeleted = false;

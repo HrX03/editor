@@ -128,14 +128,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.1.0"
-  gtk:
-    dependency: transitive
-    description:
-      name: gtk
-      sha256: e8ce9ca4b1df106e4d72dad201d345ea1a036cc12c360f1a7d5a758f78ffa42c
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.1.0"
   highlight:
     dependency: "direct main"
     description:
@@ -429,70 +421,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.1"
-  yaru:
-    dependency: "direct main"
-    description:
-      name: yaru
-      sha256: "2a44d7ee43fe3f87ca0bde691d44285387a49ac03d38653c5dd671feebcfb8e8"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.9.0"
-  yaru_icons:
-    dependency: "direct main"
-    description:
-      name: yaru_icons
-      sha256: "8ddd40522c882de898a493094f2f41687f7a0faaf3434b9c854a7605a53a2477"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.4"
-  yaru_widgets:
-    dependency: "direct main"
-    description:
-      name: yaru_widgets
-      sha256: aaae361de8679bd1a21009893c6b5924118226c987b9ec8bdc2775cf1530b69b
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.5.0"
-  yaru_window:
-    dependency: transitive
-    description:
-      name: yaru_window
-      sha256: "55c8f039d13aaa1b211a8cf0b7731ae2fdcac9b1be1e0994eb14ad1d17fecaf7"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.1.3"
-  yaru_window_linux:
-    dependency: transitive
-    description:
-      name: yaru_window_linux
-      sha256: c45606cf75880ae6427bbe176dc5313356f16c876c7013a19aeee782882c40c2
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.1.3"
-  yaru_window_manager:
-    dependency: transitive
-    description:
-      name: yaru_window_manager
-      sha256: "2d358263d19ae6598df21d6d8c0d25e75c79a82f459b63b0013a13e395c48b23"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.1.2"
-  yaru_window_platform_interface:
-    dependency: transitive
-    description:
-      name: yaru_window_platform_interface
-      sha256: e9f8cd34e207d7f7b771ae70dee347ed974cee06b981819c4181b3e474e52254
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.1.2"
-  yaru_window_web:
-    dependency: transitive
-    description:
-      name: yaru_window_web
-      sha256: "3ff30758a330d7626d54643df0cca6c179782f401aba7752da9cc0d60c9a6f74"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.0.3"
 sdks:
   dart: ">=3.1.0-185.0.dev <4.0.0"
-  flutter: ">=3.10.0"
+  flutter: ">=3.7.0"

@@ -20,9 +20,6 @@ dependencies:
   system_theme: ^2.3.1
   watcher: ^1.1.0
   window_manager: ^0.3.5
-  yaru: ^0.9.0
-  yaru_icons: ^1.0.4
-  yaru_widgets: ^2.5.0
 
 dev_dependencies:
   flutter_test:

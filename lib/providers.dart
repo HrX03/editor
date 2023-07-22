@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:watcher/watcher.dart';
 
 final textControllerProvider = ChangeNotifierProvider(
-  (ref) => HighlightingTextEditingController(),
+  (ref) => EditorTextEditingController(),
 );
 
 final undoControllerProvider = ChangeNotifierProvider(

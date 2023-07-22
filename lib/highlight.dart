@@ -37,9 +37,8 @@ List<TextSpan> _convert(List<Node> nodes, Map<String, TextStyle> theme) {
   return spans;
 }
 
-class HighlightingTextEditingController extends TextEditingController {
-  String? _language;
-  HighlightingTextEditingController({super.text});
+class EditorTextEditingController extends TextEditingController {
+  EditorTextEditingController({super.text});
 
   @override
   TextSpan buildTextSpan({
@@ -63,6 +62,7 @@ class HighlightingTextEditingController extends TextEditingController {
     );
   }
 
+  String? _language;
   String? get language => _language;
   set language(String? newLanguage) {
     _language = newLanguage;

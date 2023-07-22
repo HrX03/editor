@@ -8,6 +8,9 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 final _indentationRegex = RegExp(r"^[\s]*(?![~\s])");
+final _spaceRegex = RegExp(r"^[ ]+$");
+final _charRegex = RegExp("[A-Za-zÀ-ÖØ-öø-ÿ0-9]");
+final _charWithSpaceRegex = RegExp(r"[A-Za-zÀ-ÖØ-öø-ÿ0-9\s]");
 
 class TextEditor extends StatefulWidget {
   const TextEditor({super.key});
@@ -139,7 +142,7 @@ class _EditorView extends StatelessWidget {
             child: RepaintBoundary(
               child: Focus(
                 onKeyEvent: (node, event) {
-                  if (event is! KeyDownEvent) return KeyEventResult.ignored;
+                  if (event is KeyUpEvent) return KeyEventResult.ignored;
 
                   switch (event.logicalKey) {
                     case LogicalKeyboardKey.tab:
@@ -147,6 +150,48 @@ class _EditorView extends StatelessWidget {
                       return KeyEventResult.handled;
                     case LogicalKeyboardKey.enter:
                       controller.value = _insertNewline(controller.value);
+                      return KeyEventResult.handled;
+                  }
+
+                  switch (event.character) {
+                    case '(':
+                      controller.value = _insertCharPair(
+                        controller.value,
+                        ('(', ')'),
+                      );
+                      return KeyEventResult.handled;
+                    case '[':
+                      controller.value = _insertCharPair(
+                        controller.value,
+                        ('[', ']'),
+                      );
+                      return KeyEventResult.handled;
+                    case '{':
+                      controller.value = _insertCharPair(
+                        controller.value,
+                        ('{', '}'),
+                      );
+                      return KeyEventResult.handled;
+                    case '<':
+                      controller.value = _insertCharPair(
+                        controller.value,
+                        ('<', '>'),
+                        enableCollapsedPair: false,
+                      );
+                      return KeyEventResult.handled;
+                    case "'":
+                      controller.value = _insertCharPair(
+                        controller.value,
+                        ("'", "'"),
+                        avoidLettersAndDigits: true,
+                      );
+                      return KeyEventResult.handled;
+                    case '"':
+                      controller.value = _insertCharPair(
+                        controller.value,
+                        ('"', '"'),
+                        avoidLettersAndDigits: true,
+                      );
                       return KeyEventResult.handled;
                   }
 
@@ -248,6 +293,74 @@ TextEditingValue _insertNewline(TextEditingValue value) {
     text: [before, '\n', ' ' * spaceAmount, after].join(),
     selection: TextSelection.collapsed(offset: before.length + 1 + spaceAmount),
   );
+}
+
+TextEditingValue _insertCharPair(
+  TextEditingValue value,
+  (String, String) pair, {
+  bool enableCollapsedPair = true,
+  bool avoidLettersAndDigits = false,
+}) {
+  final String text;
+  final TextSelection selection;
+
+  final (opening, closing) = pair;
+
+  final before = value.selection.textBefore(value.text);
+  final inside = value.selection.textInside(value.text);
+  final after = value.selection.textAfter(value.text);
+
+  if (avoidLettersAndDigits && value.selection.isCollapsed) {
+    final lChar = before.characters.isNotEmpty ? before.characters.last : "!";
+    final rChar = after.characters.isNotEmpty ? after.characters.first : "!";
+
+    if (_charRegex.hasMatch(lChar) || _charRegex.hasMatch(rChar)) {
+      return TextEditingValue(
+        text: [before, opening, after].join(),
+        selection: TextSelection.collapsed(
+          offset: before.length + opening.length,
+        ),
+      );
+    }
+  } else if (value.selection.isCollapsed) {
+    final lChar = before.characters.isNotEmpty ? before.characters.last : "!";
+    final rChar = after.characters.isNotEmpty ? after.characters.first : "!";
+
+    final surroundedByOnlySpace =
+        _spaceRegex.hasMatch(lChar) && _spaceRegex.hasMatch(rChar);
+
+    if (_charWithSpaceRegex.hasMatch(lChar) &&
+        _charWithSpaceRegex.hasMatch(rChar) &&
+        !surroundedByOnlySpace) {
+      return TextEditingValue(
+        text: [before, opening, after].join(),
+        selection: TextSelection.collapsed(
+          offset: before.length + opening.length,
+        ),
+      );
+    }
+  }
+
+  if (value.selection.isCollapsed && enableCollapsedPair) {
+    text = [before, opening, closing, after].join();
+    selection = TextSelection.collapsed(offset: before.length + opening.length);
+  } else if (_spaceRegex.hasMatch(inside)) {
+    text = [before, opening, after].join();
+    selection = TextSelection.collapsed(offset: before.length + opening.length);
+  } else if (!value.selection.isCollapsed) {
+    text = [before, opening, inside, closing, after].join();
+    selection = TextSelection(
+      baseOffset: before.length + opening.length,
+      extentOffset: before.length + opening.length + inside.length,
+    );
+  } else {
+    text = [before, opening, after].join();
+    selection = TextSelection.collapsed(
+      offset: before.length + opening.length,
+    );
+  }
+
+  return TextEditingValue(text: text, selection: selection);
 }
 
 class _EditorClipper extends StatelessWidget {
@@ -353,9 +466,8 @@ class _LineNumberColumn extends StatelessWidget {
           child: CustomPaint(
             painter: _LineColumnPainter(
               lineCount: lines.length,
-              visiblePortion: position.hasContentDimensions
-                  ? position.extentInside
-                  : MediaQuery.of(context).size.height,
+              visiblePortion:
+                  position.hasContentDimensions ? position.extentInside : 0.0,
               visiblePortionOffset:
                   position.hasContentDimensions ? position.extentBefore : 0.0,
               lineHeight: minWidthParagraph.height,
@@ -399,10 +511,13 @@ class _LineColumnPainter extends CustomPainter {
 
   @override
   void paint(ui.Canvas canvas, ui.Size size) {
-    final start = (visiblePortionOffset / lineHeight).floor();
-    final end = ((visiblePortionOffset + visiblePortion) / lineHeight).ceil();
+    int start = (visiblePortionOffset / lineHeight).floor();
+    int end = ((visiblePortionOffset + visiblePortion) / lineHeight).ceil();
 
-    for (int i = max(start, 0); i < min(end, lineCount); i++) {
+    if (end < lineCount || end > lineCount) end = lineCount;
+    if (start > end) start = end - 1;
+
+    for (int i = max(start, 0); i < end; i++) {
       final y = i * lineHeight;
       final paragraph = _buildParagraphFor(
         "${i + 1}",
@@ -417,8 +532,14 @@ class _LineColumnPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return true;
+  bool shouldRepaint(covariant _LineColumnPainter old) {
+    return visiblePortion != old.visiblePortion ||
+        visiblePortionOffset != old.visiblePortionOffset ||
+        lineCount != old.lineCount ||
+        lineHeight != old.lineHeight ||
+        style != old.style ||
+        highlightedLine != old.highlightedLine ||
+        highlightedStyle != old.highlightedStyle;
   }
 }
 
