@@ -1,8 +1,14 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:collection/collection.dart';
+import 'package:editor/extensions.dart';
 import 'package:editor/highlight.dart';
 import 'package:flutter/material.dart';
+import 'package:highlighting/languages/all.dart';
+// ignore: implementation_imports
+import 'package:highlighting/src/language.dart';
+import 'package:path/path.dart' as p;
 import 'package:watcher/watcher.dart';
 
 class EditorEnvironmentProvider extends InheritedWidget {
@@ -30,7 +36,10 @@ class EditorEnvironment {
   final EditorTextEditingController textController =
       EditorTextEditingController();
   final UndoHistoryController undoController = UndoHistoryController();
-  final ValueNotifier<String?> _fileLanguage = ValueNotifier<String?>(null);
+  final ValueNotifier<Language?> _fileLanguage = ValueNotifier(null);
+  final ValueNotifier<bool> _enableLineNumberColumn = ValueNotifier(true);
+  final ValueNotifier<bool> _enableLineHighlighting = ValueNotifier(true);
+
   bool _fileDeleted = false;
 
   EditorEnvironment({File? file}) {
@@ -45,6 +54,14 @@ class EditorEnvironment {
     textController.text = editorFile.fileContents ?? "";
     textController.selection = const TextSelection.collapsed(offset: 0);
     undoController.value = UndoHistoryValue.empty;
+
+    _loadEditorLanguage();
+  }
+
+  Future<void> _loadEditorLanguage() async {
+    final langForExt = extensions[p.extension(editorFile.file!.path)];
+    editorLanguage = allLanguages.values
+        .firstWhereOrNull((e) => (e.name ?? e.id) == langForExt?.first);
   }
 
   void closeFile() {
@@ -54,13 +71,28 @@ class EditorEnvironment {
     textController.text = "";
     textController.selection = const TextSelection.collapsed(offset: 0);
     undoController.value = UndoHistoryValue.empty;
+    editorLanguage = null;
   }
 
-  String? get editorLanguage => _fileLanguage.value;
-  ValueNotifier<String?> get editorLanguageNotifier => _fileLanguage;
-  set editorLanguage(String? value) {
+  Language? get editorLanguage => _fileLanguage.value;
+  ValueNotifier<Language?> get editorLanguageNotifier => _fileLanguage;
+  set editorLanguage(Language? value) {
     textController.language = value;
     _fileLanguage.value = value;
+  }
+
+  bool get enableLineNumberColumn => _enableLineNumberColumn.value;
+  ValueNotifier<bool> get enableLineNumberColumnNotifier =>
+      _enableLineNumberColumn;
+  set enableLineNumberColumn(bool value) {
+    _enableLineNumberColumn.value = value;
+  }
+
+  bool get enableLineHighlighting => _enableLineHighlighting.value;
+  ValueNotifier<bool> get enableLineHighlightingNotifier =>
+      _enableLineHighlighting;
+  set enableLineHighlighting(bool value) {
+    _enableLineHighlighting.value = value;
   }
 
   bool get hasEdits {

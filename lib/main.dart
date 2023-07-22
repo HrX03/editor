@@ -174,13 +174,33 @@ class _EditorAppState extends State<_EditorApp> {
             ),
             SubmenuButton(
               menuChildren: [
-                MenuItemButton(
-                  onPressed: () {},
-                  child: const Text("Line numbers"),
+                ValueListenableBuilder(
+                  valueListenable: environment.enableLineNumberColumnNotifier,
+                  builder: (context, value, _) {
+                    return MenuItemButton(
+                      onPressed: () {
+                        environment.enableLineNumberColumn = !value;
+                      },
+                      trailingIcon: value
+                          ? const Icon(Icons.check)
+                          : const SizedBox.square(dimension: 24),
+                      child: const Text("Line numbers"),
+                    );
+                  },
                 ),
-                MenuItemButton(
-                  onPressed: () {},
-                  child: const Text("Line highlight"),
+                ValueListenableBuilder(
+                  valueListenable: environment.enableLineHighlightingNotifier,
+                  builder: (context, value, _) {
+                    return MenuItemButton(
+                      onPressed: () {
+                        environment.enableLineHighlighting = !value;
+                      },
+                      trailingIcon: value
+                          ? const Icon(Icons.check)
+                          : const SizedBox.square(dimension: 24),
+                      child: const Text("Line highlight"),
+                    );
+                  },
                 ),
               ],
               child: const Text("View"),

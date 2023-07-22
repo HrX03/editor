@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:highlight/highlight.dart' show Node, highlight;
+import 'package:highlighting/highlighting.dart' show Node, highlight;
+// ignore: implementation_imports
+import 'package:highlighting/src/language.dart';
 
 typedef EditorTheme = Map<String, TextStyle>;
 
@@ -13,17 +15,17 @@ List<TextSpan> _convert(List<Node> nodes, Map<String, TextStyle> theme) {
       currentSpans.add(
         node.className == null
             ? TextSpan(text: node.value)
-            : TextSpan(text: node.value, style: theme[node.className!]),
+            : TextSpan(text: node.value, style: theme[node.className]),
       );
-    } else if (node.children != null) {
+    } else {
       final List<TextSpan> tmp = [];
-      currentSpans.add(TextSpan(children: tmp, style: theme[node.className!]));
+      currentSpans.add(TextSpan(children: tmp, style: theme[node.className]));
       stack.add(currentSpans);
       currentSpans = tmp;
 
-      for (final n in node.children!) {
+      for (final n in node.children) {
         traverse(n);
-        if (n == node.children!.last) {
+        if (n == node.children.last) {
           currentSpans = stack.isEmpty ? spans : stack.removeLast();
         }
       }
@@ -53,18 +55,19 @@ class EditorTextEditingController extends TextEditingController {
         withComposing: withComposing,
       );
     }
+
     return TextSpan(
       style: style,
       children: _convert(
-        highlight.parse(text, language: _language).nodes!,
+        highlight.parse(text, languageId: _language!.id).nodes!,
         Theme.of(context).extension<HighlightThemeExtension>()!.editorTheme,
       ),
     );
   }
 
-  String? _language;
-  String? get language => _language;
-  set language(String? newLanguage) {
+  Language? _language;
+  Language? get language => _language;
+  set language(Language? newLanguage) {
     _language = newLanguage;
     notifyListeners();
   }

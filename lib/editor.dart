@@ -9,6 +9,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 final _indentationRegex = RegExp(r"^[\s]*(?![~\s])");
 final _spaceRegex = RegExp(r"^[ ]+$");
+final _anySpaceRegex = RegExp(r"^[\s]+$");
 final _charRegex = RegExp("[A-Za-zÀ-ÖØ-öø-ÿ0-9]");
 final _charWithSpaceRegex = RegExp(r"[A-Za-zÀ-ÖØ-öø-ÿ0-9\s]");
 
@@ -55,48 +56,56 @@ class _TextEditorState extends State<TextEditor>
         behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
         child: ScrollProxy(
           direction: Axis.vertical,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.only(top: 8.0, bottom: 12.0),
-            controller: verticalScrollController,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return _LineHighlightLayer(
+          child: ValueListenableBuilder(
+            valueListenable: environment.enableLineNumberColumnNotifier,
+            builder: (context, value, child) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.only(top: 8.0, bottom: 12.0),
+                controller: verticalScrollController,
+                child: _LineHighlightLayer(
                   controller: controller,
                   style: style,
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _LineNumberColumn(
-                        controller: controller,
-                        style: style,
-                        scrollController: verticalScrollController,
-                      ),
+                      if (value)
+                        _LineNumberColumn(
+                          controller: controller,
+                          style: style,
+                          scrollController: verticalScrollController,
+                        ),
                       Expanded(
-                        child: ScrollProxy(
-                          direction: Axis.horizontal,
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            controller: horizontalScrollController,
-                            child: _EditorClipper(
-                              horizontalController: horizontalScrollController,
-                              verticalController: verticalScrollController,
-                              child: _EditorView(
-                                controller: controller,
-                                undoController: environment.undoController,
-                                style: style,
-                                editableKey: key,
-                                hintText: "Start typing to edit",
-                                selectionDelegate: this,
-                                focusNode: focusNode,
-                              ),
-                            ),
-                          ),
+                        child: Padding(
+                          padding: value
+                              ? EdgeInsets.zero
+                              : const EdgeInsets.symmetric(horizontal: 16),
+                          child: child,
                         ),
                       ),
                     ],
                   ),
-                );
-              },
+                ),
+              );
+            },
+            child: ScrollProxy(
+              direction: Axis.horizontal,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                controller: horizontalScrollController,
+                child: _EditorClipper(
+                  horizontalController: horizontalScrollController,
+                  verticalController: verticalScrollController,
+                  child: _EditorView(
+                    controller: controller,
+                    undoController: environment.undoController,
+                    style: style,
+                    editableKey: key,
+                    hintText: "Start typing to edit",
+                    selectionDelegate: this,
+                    focusNode: focusNode,
+                  ),
+                ),
+              ),
             ),
           ),
         ),
@@ -344,7 +353,7 @@ TextEditingValue _insertCharPair(
   if (value.selection.isCollapsed && enableCollapsedPair) {
     text = [before, opening, closing, after].join();
     selection = TextSelection.collapsed(offset: before.length + opening.length);
-  } else if (_spaceRegex.hasMatch(inside)) {
+  } else if (_anySpaceRegex.hasMatch(inside)) {
     text = [before, opening, after].join();
     selection = TextSelection.collapsed(offset: before.length + opening.length);
   } else if (!value.selection.isCollapsed) {
@@ -578,15 +587,21 @@ class _EditorDecorator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final environment = EditorEnvironment.of(context);
+
     return ListenableBuilder(
-      listenable: Listenable.merge([controller, focusNode]),
+      listenable: Listenable.merge([
+        controller,
+        focusNode,
+        environment.editorFile,
+      ]),
       builder: (context, child) {
         return InputDecorator(
           textAlign: TextAlign.start,
           textAlignVertical: TextAlignVertical.center,
           baseStyle: style,
           decoration: InputDecoration(
-            hintText: hintText,
+            hintText: environment.editorFile.file == null ? hintText : null,
             border: InputBorder.none,
             enabledBorder: InputBorder.none,
             focusedBorder: InputBorder.none,
@@ -618,6 +633,8 @@ class _LineHighlightLayer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final environment = EditorEnvironment.of(context);
+
     return ListenableBuilder(
       listenable: controller,
       builder: (context, child) {
@@ -630,20 +647,29 @@ class _LineHighlightLayer extends StatelessWidget {
             ? controller.text.substring(0, position.offset).split("\n").length
             : 1;
 
-        return Stack(
-          children: [
-            if (controller.selection.isCollapsed)
-              Positioned(
-                top: sampleParagraph.height * (highlightedLine - 1),
-                height: sampleParagraph.height,
-                left: 0,
-                right: 0,
-                child: ColoredBox(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-                ),
-              ),
-            child!,
-          ],
+        return ValueListenableBuilder(
+          valueListenable: environment.enableLineHighlightingNotifier,
+          builder: (context, value, child) {
+            return Stack(
+              children: [
+                if (controller.selection.isCollapsed && value)
+                  Positioned(
+                    top: sampleParagraph.height * (highlightedLine - 1),
+                    height: sampleParagraph.height,
+                    left: 0,
+                    right: 0,
+                    child: ColoredBox(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withOpacity(0.2),
+                    ),
+                  ),
+                child!,
+              ],
+            );
+          },
+          child: child,
         );
       },
       child: child,

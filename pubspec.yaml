@@ -16,6 +16,7 @@ dependencies:
   flutter_riverpod: ^2.3.6
   google_fonts: ^5.1.0
   highlight: ^0.7.0
+  highlighting: ^0.9.0+11.8.0
   path: ^1.8.3
   system_theme: ^2.3.1
   watcher: ^1.1.0
