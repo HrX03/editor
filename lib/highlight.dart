@@ -43,6 +43,11 @@ class EditorTextEditingController extends TextEditingController {
   EditorTextEditingController({super.text});
 
   @override
+  EnhancedTextEditingValue get value => super.value is EnhancedTextEditingValue
+      ? super.value as EnhancedTextEditingValue
+      : EnhancedTextEditingValue.fromValue(super.value);
+
+  @override
   TextSpan buildTextSpan({
     required BuildContext context,
     TextStyle? style,
@@ -112,5 +117,40 @@ class HighlightThemeExtension extends ThemeExtension<HighlightThemeExtension> {
 extension on EditorTheme {
   TextStyle? get(String key, EditorTheme other) {
     return this[key] ?? other[key];
+  }
+}
+
+class EnhancedTextEditingValue extends TextEditingValue {
+  final int pairChainCount;
+
+  const EnhancedTextEditingValue({
+    super.text,
+    super.selection,
+    super.composing,
+    this.pairChainCount = 0,
+  });
+
+  factory EnhancedTextEditingValue.fromValue(TextEditingValue value) {
+    return EnhancedTextEditingValue(
+      text: value.text,
+      selection: value.selection,
+      composing: value.composing,
+    );
+  }
+
+  @override
+  EnhancedTextEditingValue copyWith({
+    String? text,
+    TextSelection? selection,
+    TextRange? composing,
+    int? pairChainCount,
+  }) {
+    return EnhancedTextEditingValue(
+      text: text ?? this.text,
+      selection: selection ?? this.selection,
+      composing: composing ?? this.composing,
+      // special case, we want to erase this flag unless we specify we wanna keep it
+      pairChainCount: pairChainCount ?? 0,
+    );
   }
 }

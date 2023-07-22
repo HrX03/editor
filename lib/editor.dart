@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:editor/double_scrollbars.dart';
 import 'package:editor/environment.dart';
+import 'package:editor/highlight.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -10,8 +11,19 @@ import 'package:google_fonts/google_fonts.dart';
 final _indentationRegex = RegExp(r"^[\s]*(?![~\s])");
 final _spaceRegex = RegExp(r"^[ ]+$");
 final _anySpaceRegex = RegExp(r"^[\s]+$");
+final _anyNonSpaceRegex = RegExp(r"[~\s]*");
 final _charRegex = RegExp("[A-Za-zÀ-ÖØ-öø-ÿ0-9]");
 final _charWithSpaceRegex = RegExp(r"[A-Za-zÀ-ÖØ-öø-ÿ0-9\s]");
+
+const _defaultTabChar = '  ';
+const _backspaceModifiers = [
+  LogicalKeyboardKey.controlRight,
+  LogicalKeyboardKey.controlLeft,
+  LogicalKeyboardKey.control,
+  LogicalKeyboardKey.altRight,
+  LogicalKeyboardKey.altLeft,
+  LogicalKeyboardKey.alt,
+];
 
 class TextEditor extends StatefulWidget {
   const TextEditor({super.key});
@@ -115,7 +127,7 @@ class _TextEditorState extends State<TextEditor>
 }
 
 class _EditorView extends StatelessWidget {
-  final TextEditingController controller;
+  final EditorTextEditingController controller;
   final UndoHistoryController undoController;
   final TextStyle style;
   final GlobalKey<EditableTextState> editableKey;
@@ -159,6 +171,18 @@ class _EditorView extends StatelessWidget {
                       return KeyEventResult.handled;
                     case LogicalKeyboardKey.enter:
                       controller.value = _insertNewline(controller.value);
+                      return KeyEventResult.handled;
+                    case LogicalKeyboardKey.backspace:
+                      final modifiersPressed = HardwareKeyboard
+                          .instance.logicalKeysPressed
+                          .any((e) => _backspaceModifiers.contains(e));
+                      if (modifiersPressed) return KeyEventResult.ignored;
+
+                      final value = _handleBackspace(controller.value);
+                      if (value == null) return KeyEventResult.ignored;
+
+                      controller.value = value;
+
                       return KeyEventResult.handled;
                   }
 
@@ -242,9 +266,50 @@ class _EditorView extends StatelessWidget {
   }
 }
 
+TextEditingValue? _handleBackspace(
+  EnhancedTextEditingValue value, [
+  String tabChar = _defaultTabChar,
+]) {
+  if (!value.selection.isCollapsed) return null;
+
+  final String text;
+  final TextSelection selection;
+  int pairChainCount = 0;
+
+  final before = value.selection.textBefore(value.text);
+  final after = value.selection.textAfter(value.text);
+
+  if (before.isEmpty) return null;
+
+  final beforeLines = before.split("\n");
+  final match = _indentationRegex.firstMatch(beforeLines.last);
+  final group = match?.group(0);
+
+  if (group != null && beforeLines.last.contains(_anyNonSpaceRegex)) {
+    final mod = group.length % tabChar.length;
+    final backAmount = mod != 0 ? mod : tabChar.length;
+
+    text = [before.substring(0, before.length - backAmount), after].join();
+    selection = TextSelection.collapsed(offset: before.length - backAmount);
+  } else if (value.pairChainCount > 0) {
+    text = [before.substring(0, before.length - 1), after.substring(1)].join();
+    selection = TextSelection.collapsed(offset: before.length - 1);
+    pairChainCount = value.pairChainCount - 1;
+  } else {
+    text = [before.substring(0, before.length - 1), after].join();
+    selection = TextSelection.collapsed(offset: before.length - 1);
+  }
+
+  return EnhancedTextEditingValue(
+    text: text,
+    selection: selection,
+    pairChainCount: pairChainCount,
+  );
+}
+
 TextEditingValue _insertIndendations(
-  TextEditingValue value, [
-  String tabChar = '  ',
+  EnhancedTextEditingValue value, [
+  String tabChar = _defaultTabChar,
 ]) {
   final String text;
   final TextSelection selection;
@@ -288,7 +353,7 @@ TextEditingValue _insertIndendations(
   return TextEditingValue(text: text, selection: selection);
 }
 
-TextEditingValue _insertNewline(TextEditingValue value) {
+TextEditingValue _insertNewline(EnhancedTextEditingValue value) {
   final before = value.selection.textBefore(value.text);
   final after = value.selection.textAfter(value.text);
 
@@ -305,13 +370,14 @@ TextEditingValue _insertNewline(TextEditingValue value) {
 }
 
 TextEditingValue _insertCharPair(
-  TextEditingValue value,
+  EnhancedTextEditingValue value,
   (String, String) pair, {
   bool enableCollapsedPair = true,
   bool avoidLettersAndDigits = false,
 }) {
   final String text;
   final TextSelection selection;
+  int pairChainCount = value.pairChainCount + 1;
 
   final (opening, closing) = pair;
 
@@ -324,7 +390,7 @@ TextEditingValue _insertCharPair(
     final rChar = after.characters.isNotEmpty ? after.characters.first : "!";
 
     if (_charRegex.hasMatch(lChar) || _charRegex.hasMatch(rChar)) {
-      return TextEditingValue(
+      return EnhancedTextEditingValue(
         text: [before, opening, after].join(),
         selection: TextSelection.collapsed(
           offset: before.length + opening.length,
@@ -341,7 +407,7 @@ TextEditingValue _insertCharPair(
     if (_charWithSpaceRegex.hasMatch(lChar) &&
         _charWithSpaceRegex.hasMatch(rChar) &&
         !surroundedByOnlySpace) {
-      return TextEditingValue(
+      return EnhancedTextEditingValue(
         text: [before, opening, after].join(),
         selection: TextSelection.collapsed(
           offset: before.length + opening.length,
@@ -356,6 +422,7 @@ TextEditingValue _insertCharPair(
   } else if (_anySpaceRegex.hasMatch(inside)) {
     text = [before, opening, after].join();
     selection = TextSelection.collapsed(offset: before.length + opening.length);
+    pairChainCount = 0;
   } else if (!value.selection.isCollapsed) {
     text = [before, opening, inside, closing, after].join();
     selection = TextSelection(
@@ -367,9 +434,14 @@ TextEditingValue _insertCharPair(
     selection = TextSelection.collapsed(
       offset: before.length + opening.length,
     );
+    pairChainCount = 0;
   }
 
-  return TextEditingValue(text: text, selection: selection);
+  return EnhancedTextEditingValue(
+    text: text,
+    selection: selection,
+    pairChainCount: pairChainCount,
+  );
 }
 
 class _EditorClipper extends StatelessWidget {
