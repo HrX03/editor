@@ -1,8 +1,8 @@
 import 'dart:io';
 
+import 'package:editor/controller.dart';
 import 'package:editor/editor.dart';
 import 'package:editor/environment.dart';
-import 'package:editor/highlight.dart';
 import 'package:editor/toolbar.dart';
 import 'package:editor/window.dart';
 import 'package:file_picker/file_picker.dart';

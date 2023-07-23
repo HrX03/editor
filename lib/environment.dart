@@ -1,9 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:collection/collection.dart';
+import 'package:editor/controller.dart';
 import 'package:editor/extensions.dart';
-import 'package:editor/highlight.dart';
 import 'package:flutter/material.dart';
 import 'package:highlighting/languages/all.dart';
 // ignore: implementation_imports
@@ -51,11 +52,18 @@ class EditorEnvironment {
     await editorFile.openFile(file);
     _fileDeleted = false;
 
-    textController.text = editorFile.fileContents ?? "";
+    textController.text = _normalizeLineBreaks(editorFile.fileContents);
     textController.selection = const TextSelection.collapsed(offset: 0);
     undoController.value = UndoHistoryValue.empty;
 
     _loadEditorLanguage();
+  }
+
+  String _normalizeLineBreaks(String? contents) {
+    if (contents == null) return "";
+
+    final lines = const LineSplitter().convert(contents);
+    return lines.join("\n");
   }
 
   Future<void> _loadEditorLanguage() async {

@@ -34,7 +34,7 @@ class EditorToolbar extends StatelessWidget {
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: Text(
-                "Line: ${prevTextParts.length}, Col: ${prevTextParts.last.length + 1}${selected > 0 ? " ($selected selected)" : ""}",
+                "Ln ${prevTextParts.length}, Col ${prevTextParts.last.length + 1}${selected > 0 ? " ($selected selected)" : ""}",
               ),
             );
           },
@@ -78,12 +78,16 @@ class EditorToolbar extends StatelessWidget {
                   );
                 }
                 return [
-                  const PopupMenuItem(child: Text("Plain text")),
+                  const PopupMenuItem(
+                    value: '!none!', //special value cuz null doesn't work idk
+                    child: Text("Plain text"),
+                  ),
                   ...children,
                 ];
               },
               onSelected: (value) {
-                environment.editorLanguage = allLanguages[value];
+                environment.editorLanguage =
+                    value != '!none!' ? allLanguages[value] : null;
               },
               tooltip: "Set language mode",
               initialValue: value?.id,

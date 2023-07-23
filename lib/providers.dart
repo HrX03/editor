@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:editor/highlight.dart';
+import 'package:editor/controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:watcher/watcher.dart';
