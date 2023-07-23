@@ -158,11 +158,13 @@ class WindowTitle extends StatelessWidget {
 class WindowEffectSetter extends StatefulWidget {
   final WindowEffect effect;
   final ThemeData theme;
+  final bool enableEffects;
   final Widget child;
 
   const WindowEffectSetter({
     required this.effect,
     required this.theme,
+    this.enableEffects = true,
     required this.child,
     super.key,
   });
@@ -173,6 +175,7 @@ class WindowEffectSetter extends StatefulWidget {
 
 class WindowEffectSetterState extends State<WindowEffectSetter> {
   Future<void> _setEffect(WindowEffect effect, ThemeData theme) async {
+    if (!widget.enableEffects) return;
     await Window.setEffect(
       effect: effect,
       color: theme.colorScheme.primary,

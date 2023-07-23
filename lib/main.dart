@@ -14,13 +14,17 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:system_theme/system_theme.dart';
 import 'package:window_manager/window_manager.dart';
 
+bool get _enableWindowEffects => Platform.isWindows;
+
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await SystemTheme.accentColor.load();
 
-  await Window.initialize();
-  await Window.hideWindowControls();
+  if (_enableWindowEffects) {
+    await Window.initialize();
+    await Window.hideWindowControls();
+  }
   await windowManager.ensureInitialized();
 
   const options = WindowOptions(
@@ -30,7 +34,7 @@ Future<void> main(List<String> args) async {
     backgroundColor: Colors.transparent,
   );
   await windowManager.waitUntilReadyToShow(options, () async {
-    await Window.setEffect(effect: WindowEffect.mica);
+    if (_enableWindowEffects) await Window.setEffect(effect: WindowEffect.mica);
     await windowManager.show();
     await windowManager.focus();
   });
@@ -144,9 +148,11 @@ class _EditorAppState extends State<_EditorApp> {
       child: WindowEffectSetter(
         effect: WindowEffect.mica,
         theme: Theme.of(context),
+        enableEffects: _enableWindowEffects,
         child: Scaffold(
-          backgroundColor:
-              Colors.transparent, //Theme.of(context).colorScheme.background,
+          backgroundColor: _enableWindowEffects
+              ? Colors.transparent
+              : Theme.of(context).colorScheme.background,
           appBar: WindowBar(
             title: const WindowTitle(),
             menus: [
