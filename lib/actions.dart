@@ -233,7 +233,7 @@ class EditorNewlineIntent extends EditorAction<NewlineIntent> {
     final defaultIntent = ReplaceTextIntent(
       value.value,
       ['\n', ' ' * spaceAmount].join(),
-      TextRange.collapsed(before.length),
+      value.selection,
       SelectionChangedCause.keyboard,
     );
 
@@ -261,7 +261,7 @@ class EditorNewlineIntent extends EditorAction<NewlineIntent> {
           '\n',
           ' ' * spaceAmount,
         ].join(),
-        TextRange.collapsed(before.length),
+        value.selection,
         SelectionChangedCause.keyboard,
       ),
     );
