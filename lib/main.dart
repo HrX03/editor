@@ -4,6 +4,7 @@ import 'package:editor/context_menu.dart';
 import 'package:editor/controller.dart';
 import 'package:editor/editor.dart';
 import 'package:editor/environment.dart';
+import 'package:editor/preferences.dart';
 import 'package:editor/toolbar.dart';
 import 'package:editor/window.dart';
 import 'package:file_picker/file_picker.dart';
@@ -12,18 +13,21 @@ import 'package:flutter/services.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:flutter_highlighter/themes/atom-one-dark.dart';
 import 'package:flutter_highlighter/themes/atom-one-light.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:recase/recase.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:system_theme/system_theme.dart';
 import 'package:window_manager/window_manager.dart';
 
-bool get _enableWindowEffects => Platform.isWindows;
+bool get _platformSupportsWindowEffects => Platform.isWindows;
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await SystemTheme.accentColor.load();
 
-  if (_enableWindowEffects) {
+  if (_platformSupportsWindowEffects) {
     await Window.initialize();
     await Window.hideWindowControls();
   }
@@ -36,14 +40,24 @@ Future<void> main(List<String> args) async {
     backgroundColor: Colors.transparent,
   );
   await windowManager.waitUntilReadyToShow(options, () async {
-    if (_enableWindowEffects) await Window.setEffect(effect: WindowEffect.mica);
+    if (_platformSupportsWindowEffects) {
+      await Window.setEffect(effect: WindowEffect.mica);
+    }
     await windowManager.show();
     await windowManager.focus();
   });
 
   final file = args.isNotEmpty ? File(args.first) : null;
+  final sharedPreferences = await SharedPreferences.getInstance();
 
-  runApp(MainApp(file: file));
+  runApp(
+    ProviderScope(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(sharedPreferences),
+      ],
+      child: MainApp(file: file),
+    ),
+  );
 }
 
 ColorScheme _buildSchemeForSystemAccent(
@@ -116,13 +130,15 @@ const scrollbarThemeData = ScrollbarThemeData(
   radius: Radius.zero,
 );
 
-class MainApp extends StatelessWidget {
+class MainApp extends ConsumerWidget {
   final File? file;
 
   const MainApp({this.file, super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeModeProvider);
+
     return StreamBuilder<SystemAccentColor>(
       stream: SystemTheme.onChange,
       builder: (context, snapshot) {
@@ -139,6 +155,7 @@ class MainApp extends StatelessWidget {
                 _buildSchemeForSystemAccent(systemTheme, Brightness.dark),
             editorTheme: atomOneDarkTheme,
           ),
+          themeMode: themeMode,
           home: _EditorApp(initialFile: file),
         );
       },
@@ -146,16 +163,16 @@ class MainApp extends StatelessWidget {
   }
 }
 
-class _EditorApp extends StatefulWidget {
+class _EditorApp extends ConsumerStatefulWidget {
   final File? initialFile;
 
   const _EditorApp({this.initialFile});
 
   @override
-  State<_EditorApp> createState() => _EditorAppState();
+  ConsumerState<_EditorApp> createState() => _EditorAppState();
 }
 
-class _EditorAppState extends State<_EditorApp> {
+class _EditorAppState extends ConsumerState<_EditorApp> {
   late final environment = EditorEnvironment(file: widget.initialFile);
 
   @override
@@ -164,10 +181,9 @@ class _EditorAppState extends State<_EditorApp> {
       environment: environment,
       child: WindowEffectSetter(
         effect: WindowEffect.mica,
-        theme: Theme.of(context),
-        enableEffects: _enableWindowEffects,
+        enableEffects: _platformSupportsWindowEffects,
         child: Scaffold(
-          backgroundColor: _enableWindowEffects
+          backgroundColor: _platformSupportsWindowEffects
               ? Colors.transparent
               : Theme.of(context).colorScheme.background,
           appBar: WindowBar(
@@ -204,31 +220,43 @@ class _EditorAppState extends State<_EditorApp> {
                   children: [
                     ContextMenuItem(
                       label: "Show line highlighting",
-                      trailing: ValueListenableBuilder(
-                        valueListenable:
-                            environment.enableLineHighlightingNotifier,
-                        builder: (context, value, _) => value
-                            ? const Icon(Icons.done, size: 16)
-                            : const SizedBox(width: 16),
-                      ),
+                      trailing: ref.watch(enableLineHighlightingProvider)
+                          ? const Icon(Icons.done, size: 16)
+                          : const SizedBox(width: 16),
                       onActivate: () {
-                        environment.enableLineHighlighting =
-                            !environment.enableLineHighlighting;
+                        final value = ref.read(enableLineHighlightingProvider);
+                        ref
+                            .read(enableLineHighlightingProvider.notifier)
+                            .set(!value);
                       },
                     ),
                     ContextMenuItem(
                       label: "Show line number column",
-                      trailing: ValueListenableBuilder(
-                        valueListenable:
-                            environment.enableLineNumberColumnNotifier,
-                        builder: (context, value, _) => value
-                            ? const Icon(Icons.done, size: 16)
-                            : const SizedBox(width: 16),
-                      ),
+                      trailing: ref.watch(enableLineNumberColumnProvider)
+                          ? const Icon(Icons.done, size: 16)
+                          : const SizedBox(width: 16),
                       onActivate: () {
-                        environment.enableLineNumberColumn =
-                            !environment.enableLineNumberColumn;
+                        final value = ref.read(enableLineNumberColumnProvider);
+                        ref
+                            .read(enableLineNumberColumnProvider.notifier)
+                            .set(!value);
                       },
+                    ),
+                    const ContextMenuDivider(),
+                    ContextMenuNested(
+                      label: "Theme mode",
+                      children: [
+                        for (final mode in ThemeMode.values)
+                          ContextMenuItem(
+                            label: mode.name.pascalCase,
+                            trailing: ref.watch(themeModeProvider) == mode
+                                ? const Icon(Icons.done, size: 16)
+                                : const SizedBox(width: 16),
+                            onActivate: () {
+                              ref.read(themeModeProvider.notifier).set(mode);
+                            },
+                          ),
+                      ],
                     ),
                   ],
                 ),

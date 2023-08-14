@@ -193,13 +193,11 @@ class WindowTitle extends StatelessWidget {
 
 class WindowEffectSetter extends StatefulWidget {
   final WindowEffect effect;
-  final ThemeData theme;
   final bool enableEffects;
   final Widget child;
 
   const WindowEffectSetter({
     required this.effect,
-    required this.theme,
     this.enableEffects = true,
     required this.child,
     super.key,
@@ -210,6 +208,8 @@ class WindowEffectSetter extends StatefulWidget {
 }
 
 class WindowEffectSetterState extends State<WindowEffectSetter> {
+  ThemeData? prevTheme;
+
   Future<void> _setEffect(WindowEffect effect, ThemeData theme) async {
     if (!widget.enableEffects) return;
     await Window.setEffect(
@@ -222,13 +222,24 @@ class WindowEffectSetterState extends State<WindowEffectSetter> {
   @override
   void initState() {
     super.initState();
-    _setEffect(widget.effect, widget.theme);
+  }
+
+  @override
+  void didChangeDependencies() {
+    final theme = Theme.of(context);
+
+    if (theme.brightness != prevTheme?.brightness) {
+      _setEffect(widget.effect, theme);
+      prevTheme = theme;
+    }
+
+    super.didChangeDependencies();
   }
 
   @override
   void didUpdateWidget(covariant WindowEffectSetter old) {
-    if (widget.effect != old.effect || widget.theme != old.theme) {
-      _setEffect(widget.effect, widget.theme);
+    if (widget.effect != old.effect) {
+      _setEffect(widget.effect, prevTheme!);
     }
 
     super.didUpdateWidget(old);

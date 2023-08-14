@@ -38,8 +38,6 @@ class EditorEnvironment {
       EditorTextEditingController();
   final UndoHistoryController undoController = UndoHistoryController();
   final ValueNotifier<Language?> _fileLanguage = ValueNotifier(null);
-  final ValueNotifier<bool> _enableLineNumberColumn = ValueNotifier(true);
-  final ValueNotifier<bool> _enableLineHighlighting = ValueNotifier(true);
 
   bool _fileDeleted = false;
 
@@ -87,20 +85,6 @@ class EditorEnvironment {
   set editorLanguage(Language? value) {
     textController.language = value;
     _fileLanguage.value = value;
-  }
-
-  bool get enableLineNumberColumn => _enableLineNumberColumn.value;
-  ValueNotifier<bool> get enableLineNumberColumnNotifier =>
-      _enableLineNumberColumn;
-  set enableLineNumberColumn(bool value) {
-    _enableLineNumberColumn.value = value;
-  }
-
-  bool get enableLineHighlighting => _enableLineHighlighting.value;
-  ValueNotifier<bool> get enableLineHighlightingNotifier =>
-      _enableLineHighlighting;
-  set enableLineHighlighting(bool value) {
-    _enableLineHighlighting.value = value;
   }
 
   bool get hasEdits {

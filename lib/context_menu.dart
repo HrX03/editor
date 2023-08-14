@@ -76,6 +76,12 @@ class _EditorContextMenuState extends State<EditorContextMenu> {
     super.didUpdateWidget(old);
   }
 
+  @override
+  void dispose() {
+    _entry?.dispose();
+    super.dispose();
+  }
+
   Widget _buildItem(ContextMenuEntry item) {
     return switch (item) {
       final ContextMenuItem item => MenuItemButton(
@@ -94,7 +100,7 @@ class _EditorContextMenuState extends State<EditorContextMenu> {
           menuStyle: widget.menuStyle,
           child: Text(nested.label),
         ),
-      ContextMenuDivider() => const Divider(),
+      ContextMenuDivider() => const Divider(thickness: 1),
     };
   }
 

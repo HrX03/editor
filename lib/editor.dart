@@ -87,7 +87,7 @@ class _TextEditorState extends State<TextEditor>
                           child: Padding(
                             padding: enableLineNumberColumn
                                 ? EdgeInsets.zero
-                                : const EdgeInsets.symmetric(horizontal: 16),
+                                : const EdgeInsetsDirectional.only(start: 16),
                             child: child,
                           ),
                         ),
