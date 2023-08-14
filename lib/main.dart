@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:editor/context_menu.dart';
 import 'package:editor/controller.dart';
 import 'package:editor/editor.dart';
 import 'package:editor/environment.dart';
@@ -7,6 +8,7 @@ import 'package:editor/toolbar.dart';
 import 'package:editor/window.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:flutter_highlighter/themes/atom-one-dark.dart';
 import 'package:flutter_highlighter/themes/atom-one-light.dart';
@@ -52,6 +54,7 @@ ColorScheme _buildSchemeForSystemAccent(
   if (!vividColors) {
     return ColorScheme.fromSeed(
       seedColor: systemAccent.accent,
+      shadow: Colors.transparent,
       brightness: brightness,
     );
   }
@@ -68,6 +71,7 @@ ColorScheme _buildSchemeForSystemAccent(
         onBackground: systemAccent.darkest,
         onSurface: systemAccent.darkest,
         onError: Colors.white,
+        shadow: Colors.transparent,
         brightness: Brightness.light,
       ),
     Brightness.dark => ColorScheme(
@@ -81,9 +85,28 @@ ColorScheme _buildSchemeForSystemAccent(
         onBackground: systemAccent.lightest,
         onSurface: systemAccent.lightest,
         onError: Colors.white,
+        shadow: Colors.transparent,
         brightness: Brightness.dark,
       ),
   };
+}
+
+ThemeData _buildTheme({
+  required ColorScheme colorScheme,
+  required Map<String, TextStyle> editorTheme,
+}) {
+  return ThemeData(
+    useMaterial3: true,
+    colorScheme: colorScheme,
+    shadowColor: Colors.transparent,
+    scrollbarTheme: scrollbarThemeData,
+    extensions: const [
+      HighlightThemeExtension(editorTheme: atomOneLightTheme),
+    ],
+    cardColor: colorScheme.surface,
+    scaffoldBackgroundColor: colorScheme.background,
+    brightness: colorScheme.brightness,
+  );
 }
 
 const scrollbarThemeData = ScrollbarThemeData(
@@ -106,21 +129,15 @@ class MainApp extends StatelessWidget {
         final systemTheme = snapshot.data ?? SystemTheme.accentColor;
         return MaterialApp(
           debugShowCheckedModeBanner: false,
-          theme: ThemeData.light(useMaterial3: true).copyWith(
+          theme: _buildTheme(
             colorScheme:
                 _buildSchemeForSystemAccent(systemTheme, Brightness.light),
-            scrollbarTheme: scrollbarThemeData,
-            extensions: const [
-              HighlightThemeExtension(editorTheme: atomOneLightTheme),
-            ],
+            editorTheme: atomOneLightTheme,
           ),
-          darkTheme: ThemeData.dark(useMaterial3: true).copyWith(
+          darkTheme: _buildTheme(
             colorScheme:
                 _buildSchemeForSystemAccent(systemTheme, Brightness.dark),
-            scrollbarTheme: scrollbarThemeData,
-            extensions: const [
-              HighlightThemeExtension(editorTheme: atomOneDarkTheme),
-            ],
+            editorTheme: atomOneDarkTheme,
           ),
           home: _EditorApp(initialFile: file),
         );
@@ -154,69 +171,97 @@ class _EditorAppState extends State<_EditorApp> {
               ? Colors.transparent
               : Theme.of(context).colorScheme.background,
           appBar: WindowBar(
-            title: const WindowTitle(),
-            menus: [
-              SubmenuButton(
-                menuChildren: [
-                  ListenableBuilder(
-                    listenable: Listenable.merge([
-                      environment.editorFile,
-                      environment.textController,
-                    ]),
-                    builder: (context, _) => MenuItemButton(
-                      onPressed: environment.hasEdits ||
-                              environment.editorFile.file != null
-                          ? environment.closeFile
-                          : null,
-                      child: const Text("New"),
+            title: EditorContextMenu(
+              entries: [
+                ContextMenuNested(
+                  label: "File",
+                  children: [
+                    ContextMenuItem(
+                      label: "Create new",
+                      onActivate: environment.closeFile,
+                      shortcut: const SingleActivator(
+                        LogicalKeyboardKey.keyN,
+                        control: true,
+                      ),
                     ),
-                  ),
-                  MenuItemButton(
-                    onPressed: () async {
-                      final result = await FilePicker.platform.pickFiles();
-                      if (result == null) return;
+                    ContextMenuItem(
+                      label: "Open from disk",
+                      onActivate: () async {
+                        final result = await FilePicker.platform.pickFiles();
+                        if (result == null) return;
 
-                      environment.openFile(File(result.files.first.path!));
-                    },
-                    child: const Text("Open"),
-                  ),
-                ],
-                child: const Text("File"),
+                        environment.openFile(File(result.files.first.path!));
+                      },
+                      shortcut: const SingleActivator(
+                        LogicalKeyboardKey.keyO,
+                        control: true,
+                      ),
+                    ),
+                  ],
+                ),
+                ContextMenuNested(
+                  label: "Preferences",
+                  children: [
+                    ContextMenuItem(
+                      label: "Show line highlighting",
+                      trailing: ValueListenableBuilder(
+                        valueListenable:
+                            environment.enableLineHighlightingNotifier,
+                        builder: (context, value, _) => value
+                            ? const Icon(Icons.done, size: 16)
+                            : const SizedBox(width: 16),
+                      ),
+                      onActivate: () {
+                        environment.enableLineHighlighting =
+                            !environment.enableLineHighlighting;
+                      },
+                    ),
+                    ContextMenuItem(
+                      label: "Show line number column",
+                      trailing: ValueListenableBuilder(
+                        valueListenable:
+                            environment.enableLineNumberColumnNotifier,
+                        builder: (context, value, _) => value
+                            ? const Icon(Icons.done, size: 16)
+                            : const SizedBox(width: 16),
+                      ),
+                      onActivate: () {
+                        environment.enableLineNumberColumn =
+                            !environment.enableLineNumberColumn;
+                      },
+                    ),
+                  ],
+                ),
+              ],
+              menuStyle: const MenuStyle(
+                padding: MaterialStatePropertyAll(
+                  EdgeInsets.symmetric(vertical: 12),
+                ),
               ),
-              SubmenuButton(
-                menuChildren: [
-                  ValueListenableBuilder(
-                    valueListenable: environment.enableLineNumberColumnNotifier,
-                    builder: (context, value, _) {
-                      return MenuItemButton(
-                        onPressed: () {
-                          environment.enableLineNumberColumn = !value;
-                        },
-                        trailingIcon: value
-                            ? const Icon(Icons.check)
-                            : const SizedBox.square(dimension: 24),
-                        child: const Text("Line numbers"),
-                      );
-                    },
-                  ),
-                  ValueListenableBuilder(
-                    valueListenable: environment.enableLineHighlightingNotifier,
-                    builder: (context, value, _) {
-                      return MenuItemButton(
-                        onPressed: () {
-                          environment.enableLineHighlighting = !value;
-                        },
-                        trailingIcon: value
-                            ? const Icon(Icons.check)
-                            : const SizedBox.square(dimension: 24),
-                        child: const Text("Line highlight"),
-                      );
-                    },
-                  ),
-                ],
-                child: const Text("View"),
+              menuItemStyle: TextButton.styleFrom(
+                minimumSize: const Size(220, 40),
+                textStyle: Theme.of(context).primaryTextTheme.bodyMedium,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
               ),
-            ],
+              nestedMenuItemStyle: TextButton.styleFrom(
+                minimumSize: const Size(0, 40),
+                textStyle: Theme.of(context).primaryTextTheme.bodyMedium,
+                padding: const EdgeInsets.only(left: 16, right: 8),
+              ),
+              builder: (context, controller) {
+                return TextButton(
+                  onPressed:
+                      controller.isOpen ? controller.close : controller.open,
+                  style: TextButton.styleFrom(
+                    shape: const RoundedRectangleBorder(),
+                    textStyle: const TextStyle(),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    foregroundColor: Theme.of(context).colorScheme.onBackground,
+                  ),
+                  child: const WindowTitle(),
+                );
+              },
+            ),
           ),
           body: Theme(
             data: Theme.of(context).copyWith(

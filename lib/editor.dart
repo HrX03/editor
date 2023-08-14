@@ -175,8 +175,7 @@ class _EditorView extends StatelessWidget {
                 child: TextFieldTapRegion(
                   child: EditableText(
                     autofocus: true,
-                    scrollBehavior: ScrollConfiguration.of(context)
-                        .copyWith(scrollbars: false),
+                    scrollBehavior: _NoScrollbarScrollBehavior(),
                     key: editableKey,
                     scrollPadding: EdgeInsets.zero,
                     controller: controller,
@@ -213,6 +212,17 @@ class _EditorView extends StatelessWidget {
       () => controller.annotatedValue,
       (v) => controller.metadata = v,
     );
+  }
+}
+
+class _NoScrollbarScrollBehavior extends ScrollBehavior {
+  @override
+  Widget buildScrollbar(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    return child;
   }
 }
 

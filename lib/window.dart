@@ -8,11 +8,9 @@ import 'package:window_manager/window_manager.dart';
 
 class WindowBar extends StatefulWidget implements PreferredSizeWidget {
   final Widget? title;
-  final List<Widget> menus;
 
   const WindowBar({
     this.title,
-    this.menus = const [],
     super.key,
   });
 
@@ -51,60 +49,85 @@ class _WindowBarState extends State<WindowBar> with WindowListener {
     final brightness = Theme.of(context).brightness;
 
     return Stack(
+      fit: StackFit.expand,
       children: [
         const DragToMoveArea(child: SizedBox.expand()),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            if (widget.title != null) const SizedBox(width: 16),
-            if (widget.title != null) widget.title!,
-            if (widget.title != null) const SizedBox(width: 16),
-            MenuBar(
-              style: const MenuStyle(
-                backgroundColor: MaterialStatePropertyAll(Colors.transparent),
-                elevation: MaterialStatePropertyAll(0),
-              ),
-              children: widget.menus,
-            ),
+            if (widget.title != null) const SizedBox(width: 0),
+            if (widget.title != null)
+              SizedBox(height: double.infinity, child: widget.title),
             const Spacer(),
-            WindowCaptionButton.minimize(
-              brightness: brightness,
-              onPressed: () async {
-                final isMinimized = await windowManager.isMinimized();
-                if (isMinimized) {
-                  windowManager.restore();
-                } else {
-                  windowManager.minimize();
-                }
-              },
-            ),
-            FutureBuilder<bool>(
-              future: windowManager.isMaximized(),
-              builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
-                if (snapshot.data == true) {
-                  return WindowCaptionButton.unmaximize(
+            SizedBox(
+              height: 32,
+              child: Row(
+                children: [
+                  WindowCaptionButton.minimize(
+                    brightness: brightness,
+                    onPressed: () async {
+                      final isMinimized = await windowManager.isMinimized();
+                      if (isMinimized) {
+                        windowManager.restore();
+                      } else {
+                        windowManager.minimize();
+                      }
+                    },
+                  ),
+                  FutureBuilder<bool>(
+                    future: windowManager.isMaximized(),
+                    builder:
+                        (BuildContext context, AsyncSnapshot<bool> snapshot) {
+                      if (snapshot.data == true) {
+                        return WindowCaptionButton.unmaximize(
+                          brightness: brightness,
+                          onPressed: () {
+                            windowManager.unmaximize();
+                          },
+                        );
+                      }
+                      return WindowCaptionButton.maximize(
+                        brightness: brightness,
+                        onPressed: () {
+                          windowManager.maximize();
+                        },
+                      );
+                    },
+                  ),
+                  WindowCaptionButton.close(
                     brightness: brightness,
                     onPressed: () {
-                      windowManager.unmaximize();
+                      windowManager.close();
                     },
-                  );
-                }
-                return WindowCaptionButton.maximize(
-                  brightness: brightness,
-                  onPressed: () {
-                    windowManager.maximize();
-                  },
-                );
-              },
-            ),
-            WindowCaptionButton.close(
-              brightness: brightness,
-              onPressed: () {
-                windowManager.close();
-              },
+                  ),
+                ],
+              ),
             ),
           ],
         ),
+        /* Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: SizedBox(
+              width: 480,
+              height: double.infinity,
+              child: Material(
+                clipBehavior: Clip.antiAlias,
+                borderRadius: BorderRadius.circular(8),
+                color: Theme.of(context).colorScheme.surface,
+                surfaceTintColor: Theme.of(context).colorScheme.surfaceTint,
+                elevation: 2,
+                child: InkWell(
+                  onTap: CommandPalette.of(context).open,
+                  child: Center(
+                    child: Text("Command palette"),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ), */
       ],
     );
   }
@@ -147,6 +170,19 @@ class WindowTitle extends StatelessWidget {
                     ? Theme.of(context).colorScheme.onSurface
                     : Colors.transparent,
               ),
+              alignment: Alignment.center,
+              child: !hasEdits
+                  ? const Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Positioned(
+                          left: -2,
+                          top: -3,
+                          child: Icon(Icons.expand_more, size: 16),
+                        ),
+                      ],
+                    )
+                  : null,
             ),
           ],
         );

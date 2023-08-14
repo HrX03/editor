@@ -133,11 +133,11 @@ class EditorFile extends ChangeNotifier {
   final _fileStreamController = StreamController<ChangeType>();
   StreamSubscription? _currentSub;
 
-  Future<void> openFile(File file) async {
+  Future<void> openFile(File file, {Encoding encoding = utf8}) async {
     _currentSub?.cancel();
 
     _file = file;
-    _fileContents = await file.readAsString();
+    _fileContents = await file.readAsString(encoding: encoding);
     _watcher = FileWatcher(file.path);
 
     _currentSub = _watcher!.events.listen(_pushEvent);
