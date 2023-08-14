@@ -6,8 +6,10 @@ import 'package:editor/controller.dart';
 import 'package:editor/double_scrollbars.dart';
 import 'package:editor/environment.dart';
 import 'package:editor/intents.dart';
+import 'package:editor/preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class TextEditor extends StatefulWidget {
@@ -55,59 +57,63 @@ class _TextEditorState extends State<TextEditor>
     return DoubleScrollbars(
       verticalController: verticalScrollController,
       horizontalController: horizontalScrollController,
-      child: ScrollProxy(
-        direction: Axis.vertical,
-        child: ValueListenableBuilder(
-          valueListenable: environment.enableLineNumberColumnNotifier,
-          builder: (context, value, child) {
-            return builder.buildGestureDetector(
-              behavior: HitTestBehavior.deferToChild,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.only(top: 8.0, bottom: 12.0),
-                controller: verticalScrollController,
-                child: _LineHighlightLayer(
-                  controller: controller,
-                  style: style,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (value)
-                        _LineNumberColumn(
-                          controller: controller,
-                          focusNode: focusNode,
-                          style: style,
-                          scrollController: verticalScrollController,
+      child: ScrollConfiguration(
+        behavior: _NoScrollbarScrollBehavior(),
+        child: ScrollProxy(
+          direction: Axis.vertical,
+          child: Consumer(
+            builder: (context, ref, child) {
+              final enableLineNumberColumn =
+                  ref.watch(enableLineNumberColumnProvider);
+              return builder.buildGestureDetector(
+                behavior: HitTestBehavior.deferToChild,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.only(top: 8.0, bottom: 12.0),
+                  controller: verticalScrollController,
+                  child: _LineHighlightLayer(
+                    controller: controller,
+                    style: style,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (enableLineNumberColumn)
+                          _LineNumberColumn(
+                            controller: controller,
+                            focusNode: focusNode,
+                            style: style,
+                            scrollController: verticalScrollController,
+                          ),
+                        Expanded(
+                          child: Padding(
+                            padding: enableLineNumberColumn
+                                ? EdgeInsets.zero
+                                : const EdgeInsets.symmetric(horizontal: 16),
+                            child: child,
+                          ),
                         ),
-                      Expanded(
-                        child: Padding(
-                          padding: value
-                              ? EdgeInsets.zero
-                              : const EdgeInsets.symmetric(horizontal: 16),
-                          child: child,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            );
-          },
-          child: ScrollProxy(
-            direction: Axis.horizontal,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              controller: horizontalScrollController,
-              child: _EditorClipper(
-                horizontalController: horizontalScrollController,
-                verticalController: verticalScrollController,
-                child: _EditorView(
-                  controller: controller,
-                  undoController: environment.undoController,
-                  style: style,
-                  editableKey: key,
-                  hintText: "Start typing to edit",
-                  selectionDelegate: this,
-                  focusNode: focusNode,
+              );
+            },
+            child: ScrollProxy(
+              direction: Axis.horizontal,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                controller: horizontalScrollController,
+                child: _EditorClipper(
+                  horizontalController: horizontalScrollController,
+                  verticalController: verticalScrollController,
+                  child: _EditorView(
+                    controller: controller,
+                    undoController: environment.undoController,
+                    style: style,
+                    editableKey: key,
+                    hintText: "Start typing to edit",
+                    selectionDelegate: this,
+                    focusNode: focusNode,
+                  ),
                 ),
               ),
             ),
@@ -573,8 +579,6 @@ class _LineHighlightLayer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final environment = EditorEnvironment.of(context);
-
     return ListenableBuilder(
       listenable: controller,
       builder: (context, child) {
@@ -587,12 +591,13 @@ class _LineHighlightLayer extends StatelessWidget {
             ? controller.text.substring(0, position.offset).split("\n").length
             : 1;
 
-        return ValueListenableBuilder(
-          valueListenable: environment.enableLineHighlightingNotifier,
-          builder: (context, value, child) {
+        return Consumer(
+          builder: (context, ref, child) {
+            final enableLineHighlighting =
+                ref.watch(enableLineHighlightingProvider);
             return Stack(
               children: [
-                if (controller.selection.isCollapsed && value)
+                if (controller.selection.isCollapsed && enableLineHighlighting)
                   Positioned(
                     top: sampleParagraph.height * (highlightedLine - 1),
                     height: sampleParagraph.height,
