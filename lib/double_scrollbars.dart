@@ -3,23 +3,32 @@ import 'package:flutter/material.dart';
 class DoubleScrollbars extends StatelessWidget {
   final ScrollController horizontalController;
   final ScrollController verticalController;
+  final EdgeInsetsDirectional? horizontalPadding;
+  final EdgeInsets? verticalPadding;
   final Widget child;
 
   const DoubleScrollbars({
     required this.horizontalController,
     required this.verticalController,
+    this.horizontalPadding,
+    this.verticalPadding,
     required this.child,
     super.key,
   });
 
   @override
   Widget build(BuildContext context) {
+    final vPadding = verticalPadding ?? EdgeInsets.zero;
+    final hPadding = horizontalPadding ?? EdgeInsetsDirectional.zero;
+
     return SizedBox.expand(
       child: ScrollNotificationIsolater(
         child: MediaQuery(
           data: MediaQueryData(
-            padding: const EdgeInsetsDirectional.only(bottom: 12)
-                .resolve(Directionality.of(context)),
+            padding: EdgeInsetsDirectional.only(
+              top: vPadding.top,
+              bottom: vPadding.bottom + 12.0,
+            ).resolve(Directionality.of(context)),
           ),
           child: Scrollbar(
             controller: verticalController,
@@ -28,8 +37,10 @@ class DoubleScrollbars extends StatelessWidget {
               child: ScrollNotificationIsolater(
                 child: MediaQuery(
                   data: MediaQueryData(
-                    padding: const EdgeInsetsDirectional.only(end: 12)
-                        .resolve(Directionality.of(context)),
+                    padding: EdgeInsetsDirectional.only(
+                      start: hPadding.start,
+                      end: hPadding.end + 12.0,
+                    ).resolve(Directionality.of(context)),
                   ),
                   child: Scrollbar(
                     controller: horizontalController,

@@ -54,18 +54,36 @@ class _TextEditorState extends State<TextEditor>
       color: Theme.of(context).colorScheme.onSurface,
     );
 
-    return DoubleScrollbars(
-      verticalController: verticalScrollController,
-      horizontalController: horizontalScrollController,
-      child: ScrollConfiguration(
-        behavior: _NoScrollbarScrollBehavior(),
-        child: ScrollProxy(
-          direction: Axis.vertical,
-          child: Consumer(
-            builder: (context, ref, child) {
-              final enableLineNumberColumn =
-                  ref.watch(enableLineNumberColumnProvider);
-              return builder.buildGestureDetector(
+    return Consumer(
+      builder: (context, ref, child) {
+        final enableLineNumberColumn =
+            ref.watch(enableLineNumberColumnProvider);
+        final lines = controller.text.split('\n');
+        if (lines.isEmpty) lines.add('0');
+        final span =
+            controller.buildTextSpan(context: context, withComposing: false);
+        final baseStyle = span.style ?? style;
+        final minWidthParagraph = _buildParagraphFor(
+          '0' * max(3, lines.length.toString().length),
+          baseStyle,
+          double.infinity,
+        );
+        final colWidth = minWidthParagraph.longestLine.ceilToDouble() + 1.0;
+
+        return DoubleScrollbars(
+          verticalController: verticalScrollController,
+          horizontalController: horizontalScrollController,
+          horizontalPadding: enableLineNumberColumn
+              ? EdgeInsetsDirectional.only(
+                  start: colWidth + _LineNumberColumn.padding.horizontal,
+                  end: -colWidth - _LineNumberColumn.padding.horizontal,
+                )
+              : const EdgeInsetsDirectional.only(start: 16.0, end: -16.0),
+          child: ScrollConfiguration(
+            behavior: _NoScrollbarScrollBehavior(),
+            child: ScrollProxy(
+              direction: Axis.vertical,
+              child: builder.buildGestureDetector(
                 behavior: HitTestBehavior.deferToChild,
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.only(top: 8.0, bottom: 12.0),
@@ -95,27 +113,27 @@ class _TextEditorState extends State<TextEditor>
                     ),
                   ),
                 ),
-              );
-            },
-            child: ScrollProxy(
-              direction: Axis.horizontal,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                controller: horizontalScrollController,
-                child: _EditorClipper(
-                  horizontalController: horizontalScrollController,
-                  verticalController: verticalScrollController,
-                  child: _EditorView(
-                    controller: controller,
-                    undoController: environment.undoController,
-                    style: style,
-                    editableKey: key,
-                    hintText: "Start typing to edit",
-                    selectionDelegate: this,
-                    focusNode: focusNode,
-                  ),
-                ),
               ),
+            ),
+          ),
+        );
+      },
+      child: ScrollProxy(
+        direction: Axis.horizontal,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          controller: horizontalScrollController,
+          child: _EditorClipper(
+            horizontalController: horizontalScrollController,
+            verticalController: verticalScrollController,
+            child: _EditorView(
+              controller: controller,
+              undoController: environment.undoController,
+              style: style,
+              editableKey: key,
+              hintText: "Start typing to edit",
+              selectionDelegate: this,
+              focusNode: focusNode,
             ),
           ),
         ),
