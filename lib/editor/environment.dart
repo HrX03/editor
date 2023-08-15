@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:collection/collection.dart';
-import 'package:editor/controller.dart';
-import 'package:editor/extensions.dart';
+import 'package:editor/editor/controller.dart';
+import 'package:editor/internal/extensions.dart';
 import 'package:flutter/material.dart';
 import 'package:highlighting/languages/all.dart';
 // ignore: implementation_imports

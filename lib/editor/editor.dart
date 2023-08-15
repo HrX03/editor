@@ -1,12 +1,12 @@
 import 'dart:math';
 import 'dart:ui' as ui;
 
-import 'package:editor/actions.dart';
-import 'package:editor/controller.dart';
-import 'package:editor/double_scrollbars.dart';
-import 'package:editor/environment.dart';
-import 'package:editor/intents.dart';
-import 'package:editor/preferences.dart';
+import 'package:editor/editor/actions.dart';
+import 'package:editor/editor/controller.dart';
+import 'package:editor/editor/environment.dart';
+import 'package:editor/editor/intents.dart';
+import 'package:editor/internal/preferences.dart';
+import 'package:editor/widgets/double_scrollbars.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

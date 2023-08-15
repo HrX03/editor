@@ -1,5 +1,5 @@
 import 'package:collection/collection.dart';
-import 'package:editor/environment.dart';
+import 'package:editor/editor/environment.dart';
 import 'package:flutter/material.dart';
 import 'package:highlighting/languages/all.dart';
 

@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:editor/environment.dart';
+import 'package:editor/editor/environment.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:path/path.dart' as p;

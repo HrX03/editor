@@ -1,12 +1,12 @@
 import 'dart:io';
 
-import 'package:editor/context_menu.dart';
-import 'package:editor/controller.dart';
-import 'package:editor/editor.dart';
-import 'package:editor/environment.dart';
-import 'package:editor/preferences.dart';
-import 'package:editor/toolbar.dart';
-import 'package:editor/window.dart';
+import 'package:editor/editor/editor.dart';
+import 'package:editor/editor/environment.dart';
+import 'package:editor/internal/preferences.dart';
+import 'package:editor/internal/theme.dart';
+import 'package:editor/widgets/context_menu.dart';
+import 'package:editor/widgets/toolbar.dart';
+import 'package:editor/widgets/window.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -20,14 +20,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:system_theme/system_theme.dart';
 import 'package:window_manager/window_manager.dart';
 
-bool get _platformSupportsWindowEffects => Platform.isWindows;
-
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await SystemTheme.accentColor.load();
 
-  if (_platformSupportsWindowEffects) {
+  if (platformSupportsWindowEffects) {
     await Window.initialize();
     await Window.hideWindowControls();
   }
@@ -40,7 +38,7 @@ Future<void> main(List<String> args) async {
     backgroundColor: Colors.transparent,
   );
   await windowManager.waitUntilReadyToShow(options, () async {
-    if (_platformSupportsWindowEffects) {
+    if (platformSupportsWindowEffects) {
       await Window.setEffect(effect: WindowEffect.mica);
     }
     await windowManager.show();
@@ -60,76 +58,6 @@ Future<void> main(List<String> args) async {
   );
 }
 
-ColorScheme _buildSchemeForSystemAccent(
-  SystemAccentColor systemAccent,
-  Brightness brightness, {
-  bool vividColors = false,
-}) {
-  if (!vividColors) {
-    return ColorScheme.fromSeed(
-      seedColor: systemAccent.accent,
-      shadow: Colors.transparent,
-      brightness: brightness,
-    );
-  }
-
-  return switch (brightness) {
-    Brightness.light => ColorScheme(
-        primary: systemAccent.accent,
-        secondary: systemAccent.light,
-        surface: systemAccent.lighter,
-        background: systemAccent.lightest,
-        error: Colors.red,
-        onPrimary: systemAccent.darkest,
-        onSecondary: systemAccent.darkest,
-        onBackground: systemAccent.darkest,
-        onSurface: systemAccent.darkest,
-        onError: Colors.white,
-        shadow: Colors.transparent,
-        brightness: Brightness.light,
-      ),
-    Brightness.dark => ColorScheme(
-        primary: systemAccent.accent,
-        secondary: systemAccent.dark,
-        surface: systemAccent.darker,
-        background: systemAccent.darkest,
-        error: Colors.red,
-        onPrimary: systemAccent.lightest,
-        onSecondary: systemAccent.lightest,
-        onBackground: systemAccent.lightest,
-        onSurface: systemAccent.lightest,
-        onError: Colors.white,
-        shadow: Colors.transparent,
-        brightness: Brightness.dark,
-      ),
-  };
-}
-
-ThemeData _buildTheme({
-  required ColorScheme colorScheme,
-  required Map<String, TextStyle> editorTheme,
-}) {
-  return ThemeData(
-    useMaterial3: true,
-    colorScheme: colorScheme,
-    shadowColor: Colors.transparent,
-    scrollbarTheme: scrollbarThemeData,
-    extensions: const [
-      HighlightThemeExtension(editorTheme: atomOneLightTheme),
-    ],
-    cardColor: colorScheme.surface,
-    scaffoldBackgroundColor: colorScheme.background,
-    brightness: colorScheme.brightness,
-  );
-}
-
-const scrollbarThemeData = ScrollbarThemeData(
-  thickness: MaterialStatePropertyAll(12),
-  mainAxisMargin: 0,
-  crossAxisMargin: 0,
-  radius: Radius.zero,
-);
-
 class MainApp extends ConsumerWidget {
   final File? file;
 
@@ -145,14 +73,14 @@ class MainApp extends ConsumerWidget {
         final systemTheme = snapshot.data ?? SystemTheme.accentColor;
         return MaterialApp(
           debugShowCheckedModeBanner: false,
-          theme: _buildTheme(
+          theme: buildTheme(
             colorScheme:
-                _buildSchemeForSystemAccent(systemTheme, Brightness.light),
+                buildSchemeForSystemAccent(systemTheme, Brightness.light),
             editorTheme: atomOneLightTheme,
           ),
-          darkTheme: _buildTheme(
+          darkTheme: buildTheme(
             colorScheme:
-                _buildSchemeForSystemAccent(systemTheme, Brightness.dark),
+                buildSchemeForSystemAccent(systemTheme, Brightness.dark),
             editorTheme: atomOneDarkTheme,
           ),
           themeMode: themeMode,
@@ -181,9 +109,9 @@ class _EditorAppState extends ConsumerState<_EditorApp> {
       environment: environment,
       child: WindowEffectSetter(
         effect: WindowEffect.mica,
-        enableEffects: _platformSupportsWindowEffects,
+        enableEffects: platformSupportsWindowEffects,
         child: Scaffold(
-          backgroundColor: _platformSupportsWindowEffects
+          backgroundColor: platformSupportsWindowEffects
               ? Colors.transparent
               : Theme.of(context).colorScheme.background,
           appBar: WindowBar(
