@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:editor/editor/editor.dart';
-import 'package:editor/editor/environment.dart';
+import 'package:editor/internal/environment.dart';
 import 'package:editor/internal/preferences.dart';
 import 'package:editor/internal/theme.dart';
 import 'package:editor/widgets/context_menu.dart';
@@ -101,134 +101,163 @@ class _EditorApp extends ConsumerStatefulWidget {
 }
 
 class _EditorAppState extends ConsumerState<_EditorApp> {
-  late final environment = EditorEnvironment(file: widget.initialFile);
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialFile == null) return;
+    ref.read(editorEnvironmentProvider.notifier).openFile(widget.initialFile!);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return EditorEnvironmentProvider(
-      environment: environment,
-      child: WindowEffectSetter(
-        effect: WindowEffect.mica,
-        enableEffects: platformSupportsWindowEffects,
-        child: Scaffold(
-          backgroundColor: platformSupportsWindowEffects
-              ? Colors.transparent
-              : Theme.of(context).colorScheme.background,
-          appBar: WindowBar(
-            title: EditorContextMenu(
-              entries: [
-                ContextMenuNested(
-                  label: "File",
-                  children: [
-                    ContextMenuItem(
-                      label: "Create new",
-                      onActivate: environment.closeFile,
-                      shortcut: const SingleActivator(
-                        LogicalKeyboardKey.keyN,
-                        control: true,
-                      ),
-                    ),
-                    ContextMenuItem(
-                      label: "Open from disk",
-                      onActivate: () async {
-                        final result = await FilePicker.platform.pickFiles();
-                        if (result == null) return;
+    final state = ref.watch(editorEnvironmentProvider).value!;
+    final environment = ref.watch(editorEnvironmentProvider.notifier);
 
-                        environment.openFile(File(result.files.first.path!));
-                      },
-                      shortcut: const SingleActivator(
-                        LogicalKeyboardKey.keyO,
-                        control: true,
-                      ),
+    return WindowEffectSetter(
+      effect: WindowEffect.mica,
+      enableEffects: platformSupportsWindowEffects,
+      child: Scaffold(
+        backgroundColor: platformSupportsWindowEffects
+            ? Colors.transparent
+            : Theme.of(context).colorScheme.background,
+        appBar: WindowBar(
+          title: EditorContextMenu(
+            entries: [
+              ContextMenuNested(
+                label: "File",
+                children: [
+                  ContextMenuItem(
+                    label: "Create new",
+                    onActivate: environment.closeFile,
+                    shortcut: const SingleActivator(
+                      LogicalKeyboardKey.keyN,
+                      control: true,
                     ),
-                  ],
-                ),
-                ContextMenuNested(
-                  label: "Preferences",
-                  children: [
-                    ContextMenuItem(
-                      label: "Show line highlighting",
-                      trailing: ref.watch(enableLineHighlightingProvider)
-                          ? const Icon(Icons.done, size: 16)
-                          : const SizedBox(width: 16),
-                      onActivate: () {
-                        final value = ref.read(enableLineHighlightingProvider);
-                        ref
-                            .read(enableLineHighlightingProvider.notifier)
-                            .set(!value);
-                      },
-                    ),
-                    ContextMenuItem(
-                      label: "Show line number column",
-                      trailing: ref.watch(enableLineNumberColumnProvider)
-                          ? const Icon(Icons.done, size: 16)
-                          : const SizedBox(width: 16),
-                      onActivate: () {
-                        final value = ref.read(enableLineNumberColumnProvider);
-                        ref
-                            .read(enableLineNumberColumnProvider.notifier)
-                            .set(!value);
-                      },
-                    ),
-                    const ContextMenuDivider(),
-                    ContextMenuNested(
-                      label: "Theme mode",
-                      children: [
-                        for (final mode in ThemeMode.values)
-                          ContextMenuItem(
-                            label: mode.name.pascalCase,
-                            trailing: ref.watch(themeModeProvider) == mode
-                                ? const Icon(Icons.done, size: 16)
-                                : const SizedBox(width: 16),
-                            onActivate: () {
-                              ref.read(themeModeProvider.notifier).set(mode);
-                            },
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-              menuStyle: const MenuStyle(
-                padding: MaterialStatePropertyAll(
-                  EdgeInsets.symmetric(vertical: 12),
-                ),
-              ),
-              menuItemStyle: TextButton.styleFrom(
-                minimumSize: const Size(220, 40),
-                textStyle: Theme.of(context).primaryTextTheme.bodyMedium,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-              ),
-              nestedMenuItemStyle: TextButton.styleFrom(
-                minimumSize: const Size(0, 40),
-                textStyle: Theme.of(context).primaryTextTheme.bodyMedium,
-                padding: const EdgeInsets.only(left: 16, right: 8),
-              ),
-              builder: (context, controller) {
-                return TextButton(
-                  onPressed:
-                      controller.isOpen ? controller.close : controller.open,
-                  style: TextButton.styleFrom(
-                    shape: const RoundedRectangleBorder(),
-                    textStyle: const TextStyle(),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    foregroundColor: Theme.of(context).colorScheme.onBackground,
                   ),
-                  child: const WindowTitle(),
-                );
-              },
+                  ContextMenuItem(
+                    label: "Open from disk",
+                    onActivate: () async {
+                      final result = await FilePicker.platform.pickFiles();
+                      if (result == null) return;
+
+                      environment.openFile(File(result.files.first.path!));
+                    },
+                    shortcut: const SingleActivator(
+                      LogicalKeyboardKey.keyO,
+                      control: true,
+                    ),
+                  ),
+                ],
+              ),
+              ContextMenuNested(
+                label: "Preferences",
+                children: [
+                  ContextMenuItem(
+                    label: "Show line highlighting",
+                    trailing: ref.watch(enableLineHighlightingProvider)
+                        ? const Icon(Icons.done, size: 16)
+                        : const SizedBox(width: 16),
+                    onActivate: () {
+                      final value = ref.read(enableLineHighlightingProvider);
+                      ref
+                          .read(enableLineHighlightingProvider.notifier)
+                          .set(!value);
+                    },
+                  ),
+                  ContextMenuItem(
+                    label: "Show line number column",
+                    trailing: ref.watch(enableLineNumberColumnProvider)
+                        ? const Icon(Icons.done, size: 16)
+                        : const SizedBox(width: 16),
+                    onActivate: () {
+                      final value = ref.read(enableLineNumberColumnProvider);
+                      ref
+                          .read(enableLineNumberColumnProvider.notifier)
+                          .set(!value);
+                    },
+                  ),
+                  const ContextMenuDivider(),
+                  ContextMenuNested(
+                    label: "Theme mode",
+                    children: [
+                      for (final mode in ThemeMode.values)
+                        ContextMenuItem(
+                          label: mode.name.pascalCase,
+                          trailing: ref.watch(themeModeProvider) == mode
+                              ? const Icon(Icons.done, size: 16)
+                              : const SizedBox(width: 16),
+                          onActivate: () {
+                            ref.read(themeModeProvider.notifier).set(mode);
+                          },
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+            menuStyle: const MenuStyle(
+              padding: MaterialStatePropertyAll(
+                EdgeInsets.symmetric(vertical: 12),
+              ),
             ),
-          ),
-          body: Theme(
-            data: Theme.of(context).copyWith(
-              textTheme: GoogleFonts.firaCodeTextTheme(),
+            menuItemStyle: TextButton.styleFrom(
+              minimumSize: const Size(220, 40),
+              textStyle: Theme.of(context).primaryTextTheme.bodyMedium,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
             ),
-            child: const TextEditor(),
+            nestedMenuItemStyle: TextButton.styleFrom(
+              minimumSize: const Size(0, 40),
+              textStyle: Theme.of(context).primaryTextTheme.bodyMedium,
+              padding: const EdgeInsets.only(left: 16, right: 8),
+            ),
+            builder: (context, controller) {
+              return TextButton(
+                onPressed:
+                    controller.isOpen ? controller.close : controller.open,
+                style: TextButton.styleFrom(
+                  shape: const RoundedRectangleBorder(),
+                  textStyle: const TextStyle(),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  foregroundColor: Theme.of(context).colorScheme.onBackground,
+                ),
+                child: const WindowTitle(),
+              );
+            },
           ),
-          bottomNavigationBar: const SizedBox(
-            height: 24,
-            child: EditorToolbar(),
-          ),
+        ),
+        body: state.encodingIssue == false
+            ? Theme(
+                data: Theme.of(context).copyWith(
+                  textTheme: GoogleFonts.firaCodeTextTheme(),
+                ),
+                child: const TextEditor(),
+              )
+            : SizedBox.expand(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text("Could not open file"),
+                    if (state.allowsMalformed)
+                      const Text("Try changing the file encoding")
+                    else
+                      const Text(
+                        "Try reopening the file with malformed characters",
+                      ),
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: !state.allowsMalformed
+                          ? () {
+                              environment.reopenMalformed();
+                            }
+                          : null,
+                      child: const Text("Reopen with malformed characters"),
+                    ),
+                  ],
+                ),
+              ),
+        bottomNavigationBar: const SizedBox(
+          height: 24,
+          child: EditorToolbar(),
         ),
       ),
     );

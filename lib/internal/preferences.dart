@@ -36,62 +36,69 @@ final enableLineHighlightingProvider = PrefNotifier<bool, bool>(
 );
 
 class SharedPreferencesNotifier<R, T> extends Notifier<R> {
-  final R defaultValue;
-  final SharedPreferencesType<T> type;
-  final String key;
-  final R Function(T value) decode;
-  final T Function(R value) encode;
+  final R _defaultValue;
+  final SharedPreferencesType<T> _type;
+  final String _key;
+  final R Function(T value) _decode;
+  final T Function(R value) _encode;
 
   SharedPreferencesNotifier({
-    required this.defaultValue,
-    required this.type,
-    required this.key,
-  })  : encode = ((v) => v as T),
-        decode = ((v) => v as R);
+    required R defaultValue,
+    required SharedPreferencesType<T> type,
+    required String key,
+  })  : _key = key,
+        _type = type,
+        _defaultValue = defaultValue,
+        _encode = ((v) => v as T),
+        _decode = ((v) => v as R);
 
   SharedPreferencesNotifier.custom({
-    required this.defaultValue,
-    required this.type,
-    required this.key,
-    required this.encode,
-    required this.decode,
-  });
+    required R defaultValue,
+    required SharedPreferencesType<T> type,
+    required String key,
+    required T Function(R) encode,
+    required R Function(T) decode,
+  })  : _encode = encode,
+        _decode = decode,
+        _key = key,
+        _type = type,
+        _defaultValue = defaultValue;
 
   @override
   R build() {
     final prefValue = _get();
-    return prefValue != null ? decode(prefValue) : defaultValue;
+    return prefValue != null ? _decode(prefValue) : _defaultValue;
   }
 
   void set(R value) {
-    _set(encode(value));
+    _set(_encode(value));
     state = value;
   }
 
   T? _get() {
     final sharedPreferences = ref.watch(sharedPreferencesProvider);
-    return switch (type) {
-      SharedPreferencesType.boolean => sharedPreferences.getBool(key),
-      SharedPreferencesType.string => sharedPreferences.getString(key),
-      SharedPreferencesType.integer => sharedPreferences.getInt(key),
-      SharedPreferencesType.float => sharedPreferences.getDouble(key),
-      SharedPreferencesType.stringList => sharedPreferences.getStringList(key),
+    return switch (_type) {
+      SharedPreferencesType.boolean => sharedPreferences.getBool(_key),
+      SharedPreferencesType.string => sharedPreferences.getString(_key),
+      SharedPreferencesType.integer => sharedPreferences.getInt(_key),
+      SharedPreferencesType.float => sharedPreferences.getDouble(_key),
+      SharedPreferencesType.stringList => sharedPreferences.getStringList(_key),
     } as T?;
   }
 
   void _set(T value) {
     final sharedPreferences = ref.watch(sharedPreferencesProvider);
-    switch (type) {
+    switch (_type) {
       case SharedPreferencesType.boolean:
-        sharedPreferences.setBool(key, value as bool);
+        sharedPreferences.setBool(_key, value as bool);
       case SharedPreferencesType.string:
-        sharedPreferences.setString(key, value as String);
+        sharedPreferences.setString(_key, value as String);
       case SharedPreferencesType.integer:
-        sharedPreferences.setInt(key, value as int);
+        sharedPreferences.setInt(_key, value as int);
       case SharedPreferencesType.float:
-        sharedPreferences.setDouble(key, value as double);
+        sharedPreferences.setDouble(_key, value as double);
       case SharedPreferencesType.stringList:
-        sharedPreferences.setStringList(key, value as List<String>);
+        sharedPreferences.setStringList(_key, value as List<String>);
     }
   }
 }

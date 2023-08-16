@@ -1,3 +1,4 @@
+import 'package:editor/internal/value.dart';
 import 'package:flutter/material.dart';
 import 'package:highlighting/highlighting.dart' show Node, highlight;
 // ignore: implementation_imports
@@ -196,33 +197,10 @@ extension EditorMetadataCopyWith on EditorMetadata {
     Value<String>? tabCharacter,
   }) {
     return (
-      language: Value._handleValue(language, null) ?? this.language,
+      language: Value.handleValue(language, null, this.language),
       pairChainCount:
-          Value._handleValue(pairChainCount, 0) ?? this.pairChainCount,
-      tabCharacter: Value._handleValue(tabCharacter, '  ') ?? this.tabCharacter,
+          Value.handleValue(pairChainCount, 0) ?? this.pairChainCount,
+      tabCharacter: Value.handleValue(tabCharacter, '  ') ?? this.tabCharacter,
     );
   }
-}
-
-sealed class Value<T> {
-  final T? value;
-
-  const factory Value(T value) = _ConcreteValue;
-  const factory Value.erase() = _EraseValue;
-
-  const Value._(this.value);
-
-  static T? _handleValue<T>(Value<T?>? value, T? defaultValue) {
-    if (value == null) return null;
-    if (value is _EraseValue) return defaultValue;
-    return value.value;
-  }
-}
-
-class _ConcreteValue<T> extends Value<T> {
-  const _ConcreteValue(T super.value) : super._();
-}
-
-class _EraseValue<T> extends Value<T> {
-  const _EraseValue() : super._(null);
 }

@@ -1,8 +1,9 @@
 import 'dart:math';
 
-import 'package:editor/editor/environment.dart';
+import 'package:editor/internal/environment.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:window_manager/window_manager.dart';
 
@@ -133,60 +134,52 @@ class _WindowBarState extends State<WindowBar> with WindowListener {
   }
 }
 
-class WindowTitle extends StatelessWidget {
+class WindowTitle extends ConsumerWidget {
   const WindowTitle();
 
   @override
-  Widget build(BuildContext context) {
-    final environment = EditorEnvironment.of(context);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final file = ref
+        .watch(editorEnvironmentProvider.select((value) => value.value!.file));
+    final textController = ref.watch(editorControllerProvider);
+    final hasEdits = ref.watch(hasEditsProvider);
 
-    return ListenableBuilder(
-      listenable: Listenable.merge([
-        environment.editorFile,
-        environment.textController,
-      ]),
-      builder: (context, child) {
-        final file = environment.editorFile.file;
-        final text = environment.textController.text;
-        final hasEdits = environment.hasEdits;
+    final text = textController.text;
 
-        final firstLine = text.split("\n").first;
-        String fileName =
-            firstLine.substring(0, min(firstLine.length, 45)).trim();
-        fileName = fileName.isNotEmpty ? fileName : "Untitled";
+    final firstLine = text.split("\n").first;
+    String fileName = firstLine.substring(0, min(firstLine.length, 45)).trim();
+    fileName = fileName.isNotEmpty ? fileName : "Untitled";
 
-        return Row(
-          children: [
-            Text(
-              file != null ? p.basename(file.path) : fileName,
-            ),
-            const SizedBox(width: 8),
-            Container(
-              width: 8,
-              height: 8,
-              decoration: ShapeDecoration(
-                shape: const CircleBorder(),
-                color: hasEdits
-                    ? Theme.of(context).colorScheme.onSurface
-                    : Colors.transparent,
-              ),
-              alignment: Alignment.center,
-              child: !hasEdits
-                  ? const Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Positioned(
-                          left: -2,
-                          top: -3,
-                          child: Icon(Icons.expand_more, size: 16),
-                        ),
-                      ],
-                    )
-                  : null,
-            ),
-          ],
-        );
-      },
+    return Row(
+      children: [
+        Text(
+          file != null ? p.basename(file.path) : fileName,
+        ),
+        const SizedBox(width: 8),
+        Container(
+          width: 8,
+          height: 8,
+          decoration: ShapeDecoration(
+            shape: const CircleBorder(),
+            color: hasEdits
+                ? Theme.of(context).colorScheme.onSurface
+                : Colors.transparent,
+          ),
+          alignment: Alignment.center,
+          child: !hasEdits
+              ? const Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned(
+                      left: -2,
+                      top: -3,
+                      child: Icon(Icons.expand_more, size: 16),
+                    ),
+                  ],
+                )
+              : null,
+        ),
+      ],
     );
   }
 }

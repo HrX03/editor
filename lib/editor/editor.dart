@@ -3,8 +3,8 @@ import 'dart:ui' as ui;
 
 import 'package:editor/editor/actions.dart';
 import 'package:editor/editor/controller.dart';
-import 'package:editor/editor/environment.dart';
 import 'package:editor/editor/intents.dart';
+import 'package:editor/internal/environment.dart';
 import 'package:editor/internal/preferences.dart';
 import 'package:editor/widgets/double_scrollbars.dart';
 import 'package:flutter/material.dart';
@@ -12,14 +12,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class TextEditor extends StatefulWidget {
+class TextEditor extends ConsumerStatefulWidget {
   const TextEditor({super.key});
 
   @override
-  State<TextEditor> createState() => _TextEditorState();
+  ConsumerState<TextEditor> createState() => _TextEditorState();
 }
 
-class _TextEditorState extends State<TextEditor>
+class _TextEditorState extends ConsumerState<TextEditor>
     implements TextSelectionGestureDetectorBuilderDelegate {
   final focusNode = FocusNode();
   final key = GlobalKey<EditableTextState>();
@@ -38,14 +38,9 @@ class _TextEditorState extends State<TextEditor>
   bool get selectionEnabled => true;
 
   @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final environment = EditorEnvironment.of(context);
-    final controller = environment.textController;
+    final controller = ref.watch(editorControllerProvider);
+    final undoController = ref.watch(undoControllerProvider);
     final builder = TextSelectionGestureDetectorBuilder(delegate: this);
 
     final style = GoogleFonts.firaCode(
@@ -128,7 +123,7 @@ class _TextEditorState extends State<TextEditor>
             verticalController: verticalScrollController,
             child: _EditorView(
               controller: controller,
-              undoController: environment.undoController,
+              undoController: undoController,
               style: style,
               editableKey: key,
               hintText: "Start typing to edit",
@@ -534,7 +529,7 @@ ui.Paragraph _buildParagraphFor(
   return paragraph;
 }
 
-class _EditorDecorator extends StatelessWidget {
+class _EditorDecorator extends ConsumerWidget {
   final String hintText;
   final TextEditingController controller;
   final FocusNode focusNode;
@@ -550,14 +545,13 @@ class _EditorDecorator extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final environment = EditorEnvironment.of(context);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final file = ref.watch(fileProvider);
 
     return ListenableBuilder(
       listenable: Listenable.merge([
         controller,
         focusNode,
-        environment.editorFile,
       ]),
       builder: (context, child) {
         return InputDecorator(
@@ -565,7 +559,7 @@ class _EditorDecorator extends StatelessWidget {
           textAlignVertical: TextAlignVertical.center,
           baseStyle: style,
           decoration: InputDecoration(
-            hintText: environment.editorFile.file == null ? hintText : null,
+            hintText: file == null ? hintText : null,
             border: InputBorder.none,
             enabledBorder: InputBorder.none,
             focusedBorder: InputBorder.none,

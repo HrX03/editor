@@ -1,16 +1,17 @@
 import 'package:collection/collection.dart';
-import 'package:editor/editor/environment.dart';
+import 'package:editor/internal/environment.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:highlighting/languages/all.dart';
 
-class EditorToolbar extends StatelessWidget {
+class EditorToolbar extends ConsumerWidget {
   const EditorToolbar({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final environment = EditorEnvironment.of(context);
-    final controller = environment.textController;
-    final currLanguage = environment.editorLanguageNotifier;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final controller = ref.watch(editorControllerProvider);
+    final currLanguage = ref.watch(fileLanguageProvider);
+    final currEncoding = ref.watch(encodingProvider);
 
     return Row(
       children: [
@@ -39,69 +40,89 @@ class EditorToolbar extends StatelessWidget {
             );
           },
         ),
-        ValueListenableBuilder(
-          valueListenable: currLanguage,
-          builder: (context, value, child) {
-            return PopupMenuButton<String?>(
-              itemBuilder: (context) {
-                final sortedLanguages = allLanguages.values.sorted((a, b) {
-                  final first = a.name ?? a.id;
-                  final last = b.name ?? b.id;
-
-                  return first.toLowerCase().compareTo(last.toLowerCase());
-                });
-
-                final children = <PopupMenuEntry<String?>>[];
-                final alphaRegex = RegExp("[A-Za-z]");
-                String? lastInitial;
-
-                for (final lang in sortedLanguages) {
-                  final initial =
-                      (lang.name ?? lang.id).characters.first.toLowerCase();
-                  final fixedInitial =
-                      alphaRegex.hasMatch(initial) ? initial : null;
-
-                  if (fixedInitial != lastInitial || children.isEmpty) {
-                    lastInitial = fixedInitial;
-                    children.add(
-                      _LabeledPopupMenuDivider(
-                        label: fixedInitial?.toUpperCase() ?? "#",
-                      ),
-                    );
-                  }
-
-                  children.add(
-                    PopupMenuItem(
-                      value: lang.id,
-                      child: Text(lang.name ?? lang.id),
-                    ),
-                  );
-                }
-                return [
-                  const PopupMenuItem(
-                    value: '!none!', //special value cuz null doesn't work idk
-                    child: Text("Plain text"),
-                  ),
-                  ...children,
-                ];
-              },
-              onSelected: (value) {
-                environment.editorLanguage =
-                    value != '!none!' ? allLanguages[value] : null;
-              },
-              tooltip: "Set language mode",
-              initialValue: value?.id,
-              child: SizedBox(
-                height: double.infinity,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                  child: Center(
-                    child: Text(value?.name ?? "Plain text"),
-                  ),
-                ),
+        PopupMenuButton<EncodingType>(
+          itemBuilder: (context) => [
+            for (final encoding in EncodingType.values)
+              PopupMenuItem(
+                value: encoding,
+                child: Text(encoding.displayName),
               ),
-            );
+          ],
+          onSelected: (value) {
+            final environment = ref.read(editorEnvironmentProvider.notifier);
+            environment.reopenWithEncoding(value);
           },
+          tooltip: "Set file encoding",
+          initialValue: currEncoding,
+          child: SizedBox(
+            height: double.infinity,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Center(
+                child: Text(currEncoding.displayName),
+              ),
+            ),
+          ),
+        ),
+        PopupMenuButton<String?>(
+          itemBuilder: (context) {
+            final sortedLanguages = allLanguages.values.sorted((a, b) {
+              final first = a.name ?? a.id;
+              final last = b.name ?? b.id;
+
+              return first.toLowerCase().compareTo(last.toLowerCase());
+            });
+
+            final children = <PopupMenuEntry<String?>>[];
+            final alphaRegex = RegExp("[A-Za-z]");
+            String? lastInitial;
+
+            for (final lang in sortedLanguages) {
+              final initial =
+                  (lang.name ?? lang.id).characters.first.toLowerCase();
+              final fixedInitial =
+                  alphaRegex.hasMatch(initial) ? initial : null;
+
+              if (fixedInitial != lastInitial || children.isEmpty) {
+                lastInitial = fixedInitial;
+                children.add(
+                  _LabeledPopupMenuDivider(
+                    label: fixedInitial?.toUpperCase() ?? "#",
+                  ),
+                );
+              }
+
+              children.add(
+                PopupMenuItem(
+                  value: lang.id,
+                  child: Text(lang.name ?? lang.id),
+                ),
+              );
+            }
+            return [
+              const PopupMenuItem(
+                value: '!none!', //special value cuz null doesn't work idk
+                child: Text("Plain text"),
+              ),
+              ...children,
+            ];
+          },
+          onSelected: (value) {
+            final environment = ref.read(editorEnvironmentProvider.notifier);
+            environment
+                .setLanguage(value != '!none!' ? allLanguages[value] : null);
+          },
+          tooltip: "Set language mode",
+          initialValue: currLanguage?.id,
+          child: SizedBox(
+            height: double.infinity,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Center(
+                child: Text(currLanguage?.name ?? "Plain text"),
+              ),
+            ),
+          ),
         ),
         const SizedBox(width: 16),
       ],

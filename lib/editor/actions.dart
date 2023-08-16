@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:editor/editor/controller.dart';
 import 'package:editor/editor/intents.dart';
+import 'package:editor/internal/value.dart';
 import 'package:flutter/material.dart';
 
 final _spaceRegex = RegExp(r"^[\h]+$");
