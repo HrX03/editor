@@ -19,6 +19,14 @@ final themeModeProvider = PrefNotifier<ThemeMode, String>(
   ),
 );
 
+final enableWindowEffectsProvider = PrefNotifier<bool, bool>(
+  () => SharedPreferencesNotifier(
+    defaultValue: true,
+    key: "enable_window_effects",
+    type: SharedPreferencesType.boolean,
+  ),
+);
+
 final enableLineNumberColumnProvider = PrefNotifier<bool, bool>(
   () => SharedPreferencesNotifier(
     defaultValue: true,
@@ -31,6 +39,14 @@ final enableLineHighlightingProvider = PrefNotifier<bool, bool>(
   () => SharedPreferencesNotifier(
     defaultValue: true,
     key: "enable_line_highlighting",
+    type: SharedPreferencesType.boolean,
+  ),
+);
+
+final enableLineWrapProvider = PrefNotifier<bool, bool>(
+  () => SharedPreferencesNotifier(
+    defaultValue: false,
+    key: "enable_line_wrap",
     type: SharedPreferencesType.boolean,
   ),
 );

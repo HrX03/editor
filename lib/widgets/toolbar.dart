@@ -1,8 +1,8 @@
-import 'package:collection/collection.dart';
 import 'package:editor/internal/environment.dart';
+import 'package:editor/internal/extensions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:highlighting/languages/all.dart';
+import 'package:re_highlight/languages/all.dart';
 
 class EditorToolbar extends ConsumerWidget {
   const EditorToolbar({super.key});
@@ -15,39 +15,47 @@ class EditorToolbar extends ConsumerWidget {
 
     return Row(
       children: [
-        const Spacer(),
+        const SizedBox(width: 16),
         ListenableBuilder(
           listenable: controller,
           builder: (context, _) {
-            final position =
-                controller.selection.start > controller.selection.end
-                    ? controller.selection.base
-                    : controller.selection.extent;
-            final prevText =
-                position.offset > 0 && position.offset <= controller.text.length
-                    ? controller.text.substring(0, position.offset)
-                    : "";
-            final prevTextParts = prevText.split("\n");
-            final selected = !controller.selection.isCollapsed
-                ? controller.selection.textInside(controller.text).length
-                : 0;
+            final lineIndex = controller.selection.endIndex;
+            final lineOffset = controller.selection.endOffset;
 
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: Text(
-                "Ln ${prevTextParts.length}, Col ${prevTextParts.last.length + 1}${selected > 0 ? " ($selected selected)" : ""}",
+                "Ln ${lineIndex + 1}, Col ${lineOffset + 1}",
+                style: const TextStyle(fontSize: 12),
               ),
             );
           },
         ),
-        PopupMenuButton<EncodingType>(
-          itemBuilder: (context) => [
-            for (final encoding in EncodingType.values)
-              PopupMenuItem(
-                value: encoding,
-                child: Text(encoding.displayName),
+        ListenableBuilder(
+          listenable: controller,
+          builder: (context, _) {
+            final selected = !controller.selection.isCollapsed ? controller.selectedText.length : 0;
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Text(
+                "${selected > 0 ? "$selected of " : ""}${controller.text.length} characters",
+                style: const TextStyle(fontSize: 12),
               ),
-          ],
+            );
+          },
+        ),
+        const Spacer(),
+        PopupMenuButton<EncodingType>(
+          itemBuilder:
+              (context) => [
+                for (final encoding in EncodingType.values)
+                  PopupMenuItem(
+                    value: encoding,
+                    height: 32,
+                    child: Text(encoding.displayName, style: const TextStyle(fontSize: 12)),
+                  ),
+              ],
           onSelected: (value) {
             final environment = ref.read(editorEnvironmentProvider.notifier);
             environment.reopenWithEncoding(value);
@@ -59,67 +67,61 @@ class EditorToolbar extends ConsumerWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: Center(
-                child: Text(currEncoding.displayName),
+                child: Text(currEncoding.displayName, style: const TextStyle(fontSize: 12)),
               ),
             ),
           ),
         ),
         PopupMenuButton<String?>(
           itemBuilder: (context) {
-            final sortedLanguages = allLanguages.values.sorted((a, b) {
-              final first = a.name ?? a.id;
-              final last = b.name ?? b.id;
-
-              return first.toLowerCase().compareTo(last.toLowerCase());
-            });
-
             final children = <PopupMenuEntry<String?>>[];
             final alphaRegex = RegExp("[A-Za-z]");
             String? lastInitial;
 
             for (final lang in sortedLanguages) {
-              final initial =
-                  (lang.name ?? lang.id).characters.first.toLowerCase();
-              final fixedInitial =
-                  alphaRegex.hasMatch(initial) ? initial : null;
+              final initial = (lang.value.name ?? lang.key).characters.first.toLowerCase();
+              final fixedInitial = alphaRegex.hasMatch(initial) ? initial : null;
 
               if (fixedInitial != lastInitial || children.isEmpty) {
                 lastInitial = fixedInitial;
-                children.add(
-                  _LabeledPopupMenuDivider(
-                    label: fixedInitial?.toUpperCase() ?? "#",
-                  ),
-                );
+                children.add(_LabeledPopupMenuDivider(label: fixedInitial?.toUpperCase() ?? "#"));
               }
 
               children.add(
                 PopupMenuItem(
-                  value: lang.id,
-                  child: Text(lang.name ?? lang.id),
+                  value: lang.key,
+                  height: 32,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(lang.value.name ?? lang.key, style: const TextStyle(fontSize: 12)),
                 ),
               );
             }
+
             return [
               const PopupMenuItem(
                 value: '!none!', //special value cuz null doesn't work idk
-                child: Text("Plain text"),
+                height: 32,
+                child: Text("Plain text", style: TextStyle(fontSize: 12)),
               ),
               ...children,
             ];
           },
           onSelected: (value) {
             final environment = ref.read(editorEnvironmentProvider.notifier);
-            environment
-                .setLanguage(value != '!none!' ? allLanguages[value] : null);
+            environment.setLanguage(value != '!none!' ? builtinAllLanguages[value] : null);
           },
+          menuPadding: const EdgeInsets.only(top: 12, bottom: 4),
           tooltip: "Set language mode",
-          initialValue: currLanguage?.id,
+          initialValue: currLanguage?.name,
           child: SizedBox(
             height: double.infinity,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: Center(
-                child: Text(currLanguage?.name ?? "Plain text"),
+                child: Text(
+                  currLanguage?.name ?? "Plain text",
+                  style: const TextStyle(fontSize: 12),
+                ),
               ),
             ),
           ),
@@ -136,32 +138,23 @@ class _LabeledPopupMenuDivider extends PopupMenuDivider {
   const _LabeledPopupMenuDivider({required this.label});
 
   @override
-  State<_LabeledPopupMenuDivider> createState() =>
-      _LabeledPopupMenuDividerState();
+  State<_LabeledPopupMenuDivider> createState() => _LabeledPopupMenuDividerState();
 }
 
 class _LabeledPopupMenuDividerState extends State<_LabeledPopupMenuDivider> {
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 16,
-          child: Divider(height: widget.height),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          widget.label,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Divider(height: widget.height),
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          SizedBox(width: 8, child: Divider(height: widget.height)),
+          const SizedBox(width: 8),
+          Text(widget.label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+          const SizedBox(width: 8),
+          Expanded(child: Divider(height: widget.height)),
+        ],
+      ),
     );
   }
 }

@@ -10,10 +10,7 @@ import 'package:window_manager/window_manager.dart';
 class WindowBar extends StatefulWidget implements PreferredSizeWidget {
   final Widget? title;
 
-  const WindowBar({
-    this.title,
-    super.key,
-  });
+  const WindowBar({this.title, super.key});
 
   @override
   State<WindowBar> createState() => _WindowBarState();
@@ -57,9 +54,28 @@ class _WindowBarState extends State<WindowBar> with WindowListener {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            if (widget.title != null) const SizedBox(width: 0),
-            if (widget.title != null)
-              SizedBox(height: double.infinity, child: widget.title),
+            /* const SizedBox(width: 4),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: SizedBox(
+                  height: double.infinity,
+                  child: Material(
+                    clipBehavior: Clip.antiAlias,
+                    borderRadius: BorderRadius.circular(4),
+                    color: Theme.of(context).colorScheme.surfaceContainer,
+                    surfaceTintColor: Theme.of(context).colorScheme.surfaceTint,
+                    elevation: 2,
+                    child: InkWell(
+                      //onTap: CommandPalette.of(context).open,
+                      child: Center(child: widget.title),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 4), */
+            if (widget.title != null) SizedBox(height: double.infinity, child: widget.title),
             const Spacer(),
             SizedBox(
               height: 32,
@@ -78,8 +94,7 @@ class _WindowBarState extends State<WindowBar> with WindowListener {
                   ),
                   FutureBuilder<bool>(
                     future: windowManager.isMaximized(),
-                    builder:
-                        (BuildContext context, AsyncSnapshot<bool> snapshot) {
+                    builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
                       if (snapshot.data == true) {
                         return WindowCaptionButton.unmaximize(
                           brightness: brightness,
@@ -109,21 +124,19 @@ class _WindowBarState extends State<WindowBar> with WindowListener {
         ),
         /* Center(
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.symmetric(vertical: 4),
             child: SizedBox(
               width: 480,
               height: double.infinity,
               child: Material(
                 clipBehavior: Clip.antiAlias,
-                borderRadius: BorderRadius.circular(8),
-                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(4),
+                color: Theme.of(context).colorScheme.surfaceContainer,
                 surfaceTintColor: Theme.of(context).colorScheme.surfaceTint,
                 elevation: 2,
                 child: InkWell(
-                  onTap: CommandPalette.of(context).open,
-                  child: Center(
-                    child: Text("Command palette"),
-                  ),
+                  //onTap: CommandPalette.of(context).open,
+                  child: Center(child: widget.title),
                 ),
               ),
             ),
@@ -139,45 +152,36 @@ class WindowTitle extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final file = ref
-        .watch(editorEnvironmentProvider.select((value) => value.value!.file));
+    final file = ref.watch(editorEnvironmentProvider.select((value) => value.value!.file));
     final textController = ref.watch(editorControllerProvider);
     final hasEdits = ref.watch(hasEditsProvider);
 
-    final text = textController.text;
+    final firstLine = textController.codeLines.first.text;
 
-    final firstLine = text.split("\n").first;
-    String fileName = firstLine.substring(0, min(firstLine.length, 45)).trim();
+    String fileName = firstLine.substring(0, min(firstLine.length, 40)).trim();
     fileName = fileName.isNotEmpty ? fileName : "Untitled";
 
     return Row(
       children: [
-        Text(
-          file != null ? p.basename(file.path) : fileName,
-        ),
+        Text(file != null ? p.basename(file.path) : fileName),
         const SizedBox(width: 8),
         Container(
           width: 8,
           height: 8,
           decoration: ShapeDecoration(
             shape: const CircleBorder(),
-            color: hasEdits
-                ? Theme.of(context).colorScheme.onSurface
-                : Colors.transparent,
+            color: hasEdits ? Theme.of(context).colorScheme.onSurface : Colors.transparent,
           ),
           alignment: Alignment.center,
-          child: !hasEdits
-              ? const Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Positioned(
-                      left: -2,
-                      top: -3,
-                      child: Icon(Icons.expand_more, size: 16),
-                    ),
-                  ],
-                )
-              : null,
+          child:
+              !hasEdits
+                  ? const Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Positioned(left: -2, top: -3, child: Icon(Icons.expand_more, size: 16)),
+                    ],
+                  )
+                  : null,
         ),
       ],
     );
@@ -204,9 +208,9 @@ class WindowEffectSetterState extends State<WindowEffectSetter> {
   ThemeData? prevTheme;
 
   Future<void> _setEffect(WindowEffect effect, ThemeData theme) async {
-    if (!widget.enableEffects) return;
+    //if (!widget.enableEffects) return;
     await Window.setEffect(
-      effect: effect,
+      effect: widget.enableEffects ? effect : WindowEffect.disabled,
       color: theme.colorScheme.primary,
       dark: theme.brightness == Brightness.dark,
     );

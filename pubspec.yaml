@@ -4,34 +4,51 @@ publish_to: 'none'
 version: 0.1.0
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: '>=3.7.0 <4.0.0'
 
 dependencies:
   charset: ^2.0.1
+  clipboard_watcher: ^0.3.0
   collection: ^1.17.1
   enough_convert: ^1.6.0
-  file_picker: ^5.3.2
+  file_picker: ^8.1.2
   flutter:
     sdk: flutter
-  flutter_acrylic: ^1.1.3
+  flutter_acrylic: ^1.1.4
   flutter_highlighter: ^0.1.1
-  flutter_riverpod: ^2.3.6
-  google_fonts: ^5.1.0
+  flutter_riverpod: ^2.5.1
+  google_fonts: ^6.2.1
   highlight: ^0.7.0
   highlighting: ^0.9.0+11.8.0
   path: ^1.8.3
+  re_editor:
+    git: https://github.com/HrX03/re-editor
+  re_highlight: ^0.0.3
   recase: ^4.1.0
-  shared_preferences: ^2.2.0
-  system_theme: ^2.3.1
+  shared_preferences: ^2.3.2
+  system_theme: ^3.1.0
   watcher: ^1.1.0
-  window_manager: ^0.3.5
+  window_manager: ^0.4.2
 
 dev_dependencies:
-  custom_lint: ^0.5.2
+  custom_lint: ^0.6.7
   flutter_test:
     sdk: flutter
-  lint: ^2.1.2
-  riverpod_lint: ^2.0.1
+  lint: ^2.3.0
+  riverpod_lint: ^2.3.13
 
 flutter:
   uses-material-design: true
+  fonts:
+    - family: FiraCode
+      fonts:
+        - asset: fonts/FiraCode-Light.ttf
+          weight: 300
+        - asset: fonts/FiraCode-Regular.ttf
+          weight: 400
+        - asset: fonts/FiraCode-Medium.ttf
+          weight: 500
+        - asset: fonts/FiraCode-SemiBold.ttf
+          weight: 600
+        - asset: fonts/FiraCode-Bold.ttf
+          weight: 700

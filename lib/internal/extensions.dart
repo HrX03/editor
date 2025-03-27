@@ -1,3 +1,6 @@
+import 'package:collection/collection.dart';
+import 'package:re_highlight/languages/all.dart';
+
 const extensions = {
   ".1": ["Groff"],
   ".1in": ["Groff"],
@@ -344,17 +347,7 @@ const extensions = {
   ".ik": ["Ioke"],
   ".ily": ["LilyPond"],
   ".iml": ["XML"],
-  ".inc": [
-    "Assembly",
-    "C++",
-    "HTML",
-    "PAWN",
-    "PHP",
-    "POV-Ray SDL",
-    "Pascal",
-    "SQL",
-    "SourcePawn",
-  ],
+  ".inc": ["Assembly", "C++", "HTML", "PAWN", "PHP", "POV-Ray SDL", "Pascal", "SQL", "SourcePawn"],
   ".ini": ["INI"],
   ".inl": ["C++"],
   ".ino": ["Arduino"],
@@ -437,15 +430,7 @@ const extensions = {
   ".lua": ["Lua"],
   ".lvproj": ["LabVIEW"],
   ".ly": ["LilyPond"],
-  ".m": [
-    "Limbo",
-    "M",
-    "MUF",
-    "Mathematica",
-    "Matlab",
-    "Mercury",
-    "Objective-C",
-  ],
+  ".m": ["Limbo", "M", "MUF", "Mathematica", "Matlab", "Mercury", "Objective-C"],
   ".m4": ["M4", "M4Sugar"],
   ".ma": ["Mathematica"],
   ".mak": ["Makefile"],
@@ -918,3 +903,10 @@ const extensions = {
   ".zpl": ["Zimpl"],
   ".zsh": ["Shell"],
 };
+
+final sortedLanguages = builtinAllLanguages.entries.sorted((a, b) {
+  final first = a.value.name ?? a.key;
+  final last = b.value.name ?? b.key;
+
+  return first.toLowerCase().compareTo(last.toLowerCase());
+});

@@ -3,3 +3,6 @@ include: package:lint/strict.yaml
 analyzer:
   plugins:
     - custom_lint
+
+formatter:
+  page_width: 100
