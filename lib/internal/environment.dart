@@ -35,7 +35,7 @@ typedef EditorState =
     ({
       File? file,
       String? fileContents,
-      Mode? fileLanguage,
+      (String, Mode)? fileLanguage,
       EncodingType encoding,
       bool allowsMalformed,
       bool encodingIssue,
@@ -167,9 +167,8 @@ class EditorEnvironment extends AsyncNotifier<EditorState> {
     ));
   }
 
-  void setLanguage(Mode? language) {
+  void setLanguage((String, Mode)? language) {
     final currState = state.value!;
-    // _textController.language = language;
     state = AsyncData(
       currState.copyWith(fileLanguage: language != null ? Value(language) : const Value.erase()),
     );
@@ -216,19 +215,18 @@ class EditorEnvironment extends AsyncNotifier<EditorState> {
     return lines.join("\n");
   }
 
-  Mode? _loadEditorLanguage(File? file) {
+  (String, Mode)? _loadEditorLanguage(File? file) {
     final highlight = Highlight();
     highlight.registerLanguages(builtinAllLanguages);
     final langForExt = extensions[p.extension(file!.path)];
-    return builtinAllLanguages.entries
-        .firstWhereOrNull(
-          (e) =>
-              e.value.name == langForExt?.first ||
-              e.value.name == p.extension(file.path).substring(1) ||
-              e.key == langForExt?.first ||
-              e.key == p.extension(file.path).substring(1),
-        )
-        ?.value;
+    final entry = builtinAllLanguages.entries.firstWhereOrNull(
+      (e) =>
+          e.value.name == langForExt?.first ||
+          e.value.name == p.extension(file.path).substring(1) ||
+          e.key == langForExt?.first ||
+          e.key == p.extension(file.path).substring(1),
+    );
+    return entry != null ? (entry.key, entry.value) : null;
   }
 }
 
@@ -236,7 +234,7 @@ extension on EditorState {
   EditorState copyWith({
     Value<File?>? file,
     Value<String?>? fileContents,
-    Value<Mode?>? fileLanguage,
+    Value<(String, Mode)?>? fileLanguage,
     Value<EncodingType?>? encoding,
     Value<bool>? allowsMalformed,
     Value<bool>? encodingIssue,

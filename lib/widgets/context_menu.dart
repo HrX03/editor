@@ -1,8 +1,9 @@
 import 'package:collection/collection.dart';
+import 'package:editor/internal/theme.dart';
 import 'package:flutter/material.dart';
+import 'package:responsive_framework/responsive_framework.dart';
 
 class EditorContextMenu extends StatefulWidget {
-  final Widget Function(BuildContext context, MenuController controller) builder;
   final List<ContextMenuEntry> entries;
   final MenuStyle? menuStyle;
   final ButtonStyle? menuItemStyle;
@@ -11,7 +12,6 @@ class EditorContextMenu extends StatefulWidget {
   final bool registerShortcuts;
 
   const EditorContextMenu({
-    required this.builder,
     required this.entries,
     this.menuStyle,
     this.menuItemStyle,
@@ -26,6 +26,8 @@ class EditorContextMenu extends StatefulWidget {
 }
 
 class _EditorContextMenuState extends State<EditorContextMenu> {
+  final _implicitMenuController = MenuController();
+  MenuController get _menuController => widget.controller ?? _implicitMenuController;
   ShortcutRegistryEntry? _entry;
 
   @override
@@ -48,32 +50,6 @@ class _EditorContextMenuState extends State<EditorContextMenu> {
   void dispose() {
     _entry?.dispose();
     super.dispose();
-  }
-
-  Widget _buildItem(ContextMenuEntry item) {
-    return switch (item) {
-      final ContextMenuListenableWrapper item => ListenableBuilder(
-        listenable: item.listenable,
-        builder: (context, child) => _buildItem(item.builder()),
-      ),
-      final ContextMenuItem item => MenuItemButton(
-        shortcut: item.shortcut,
-        leadingIcon: item.leading,
-        trailingIcon: item.trailing,
-        style: widget.menuItemStyle,
-        onPressed: item.onActivate,
-        child: Text(item.label),
-      ),
-      final ContextMenuNested nested => SubmenuButton(
-        leadingIcon: nested.leading,
-        menuChildren: nested.children.map(_buildItem).toList(),
-        alignmentOffset: const Offset(4, 8),
-        style: widget.nestedMenuItemStyle,
-        menuStyle: widget.menuStyle,
-        child: Text(nested.label),
-      ),
-      ContextMenuDivider() => const Divider(thickness: 1),
-    };
   }
 
   void _registerShortcuts(List<ContextMenuEntry> entries) {
@@ -100,18 +76,88 @@ class _EditorContextMenuState extends State<EditorContextMenu> {
 
   @override
   Widget build(BuildContext context) {
+    if (ResponsiveBreakpoints.of(context).largerThan('COMPACT')) {
+      return MenuBar(
+        style: const MenuStyle(
+          backgroundColor: WidgetStatePropertyAll(Colors.transparent),
+          padding: WidgetStatePropertyAll(EdgeInsets.only(left: 8)),
+          minimumSize: WidgetStatePropertyAll(Size(0, 40)),
+        ),
+        controller: _menuController,
+        children: entriesToWidgets(
+          entries: widget.entries,
+          menuStyle: widget.menuStyle,
+          menuItemStyle: widget.menuItemStyle,
+          nestedMenuItemStyle: widget.nestedMenuItemStyle,
+        ),
+      );
+    }
+
     return MenuAnchor(
-      menuChildren: widget.entries.map(_buildItem).toList(),
+      menuChildren: entriesToWidgets(
+        entries: widget.entries,
+        menuStyle: widget.menuStyle,
+        menuItemStyle: widget.menuItemStyle,
+        nestedMenuItemStyle: widget.nestedMenuItemStyle,
+      ),
+      controller: _menuController,
       style: widget.menuStyle,
       alignmentOffset: const Offset(4, 4),
-      controller: widget.controller,
-      builder: (context, controller, child) => widget.builder(context, controller),
+      builder: (context, controller, child) {
+        return IconButton(
+          onPressed: controller.isOpen ? controller.close : controller.open,
+          style: IconButton.styleFrom(shape: const RoundedRectangleBorder()),
+          icon: const Icon(Icons.menu, size: 16),
+        );
+      },
     );
   }
 }
 
-sealed class ContextMenuEntry {
+List<Widget> entriesToWidgets({
+  required List<ContextMenuEntry> entries,
+  MenuStyle? menuStyle,
+  ButtonStyle? menuItemStyle,
+  ButtonStyle? nestedMenuItemStyle,
+}) {
+  return entries
+      .map(
+        (e) => e.render(
+          menuStyle: menuStyle,
+          menuItemStyle: menuItemStyle,
+          nestedMenuItemStyle: nestedMenuItemStyle,
+        ),
+      )
+      .toList();
+}
+
+List<Widget> entriesToWidgetsDefaultStyle({
+  required List<ContextMenuEntry> entries,
+  required BuildContext context,
+}) {
+  final menuStyle = getMenuStyle();
+  final menuItemStyle = getMenuItemStyle(Theme.of(context));
+  final nestedMenuItemStyle = getNestedMenuItemStyle(Theme.of(context));
+
+  return entries
+      .map(
+        (e) => e.render(
+          menuStyle: menuStyle,
+          menuItemStyle: menuItemStyle,
+          nestedMenuItemStyle: nestedMenuItemStyle,
+        ),
+      )
+      .toList();
+}
+
+abstract class ContextMenuEntry {
   const ContextMenuEntry();
+
+  Widget render({
+    MenuStyle? menuStyle,
+    ButtonStyle? menuItemStyle,
+    ButtonStyle? nestedMenuItemStyle,
+  });
 }
 
 class ContextMenuItem extends ContextMenuEntry {
@@ -120,6 +166,7 @@ class ContextMenuItem extends ContextMenuEntry {
   final VoidCallback? onActivate;
   final Widget? leading;
   final Widget? trailing;
+  final ButtonStyle? style;
 
   const ContextMenuItem({
     required this.label,
@@ -127,19 +174,78 @@ class ContextMenuItem extends ContextMenuEntry {
     this.onActivate,
     this.leading,
     this.trailing,
+    this.style,
   });
+
+  @override
+  Widget render({
+    MenuStyle? menuStyle,
+    ButtonStyle? menuItemStyle,
+    ButtonStyle? nestedMenuItemStyle,
+  }) {
+    return MenuItemButton(
+      shortcut: shortcut,
+      leadingIcon: leading,
+      trailingIcon: trailing,
+      style: style ?? menuItemStyle,
+      onPressed: onActivate,
+      child: Text(label),
+    );
+  }
 }
 
 class ContextMenuNested extends ContextMenuEntry {
   final String label;
   final List<ContextMenuEntry> children;
   final Widget? leading;
+  final MenuStyle? menuStyle;
+  final ButtonStyle? style;
 
-  const ContextMenuNested({required this.label, required this.children, this.leading});
+  const ContextMenuNested({
+    required this.label,
+    required this.children,
+    this.leading,
+    this.menuStyle,
+    this.style,
+  });
+
+  @override
+  Widget render({
+    MenuStyle? menuStyle,
+    ButtonStyle? menuItemStyle,
+    ButtonStyle? nestedMenuItemStyle,
+  }) {
+    return SubmenuButton(
+      leadingIcon: leading,
+      menuChildren:
+          children
+              .map(
+                (i) => i.render(
+                  menuStyle: menuStyle,
+                  menuItemStyle: menuItemStyle,
+                  nestedMenuItemStyle: nestedMenuItemStyle,
+                ),
+              )
+              .toList(),
+      alignmentOffset: const Offset(4, 8),
+      style: style ?? nestedMenuItemStyle,
+      menuStyle: menuStyle ?? menuStyle,
+      child: Text(label),
+    );
+  }
 }
 
 class ContextMenuDivider extends ContextMenuEntry {
   const ContextMenuDivider();
+
+  @override
+  Widget render({
+    MenuStyle? menuStyle,
+    ButtonStyle? menuItemStyle,
+    ButtonStyle? nestedMenuItemStyle,
+  }) {
+    return const Divider(thickness: 1);
+  }
 }
 
 class ContextMenuListenableWrapper extends ContextMenuEntry {
@@ -147,4 +253,21 @@ class ContextMenuListenableWrapper extends ContextMenuEntry {
   final ContextMenuEntry Function() builder;
 
   const ContextMenuListenableWrapper({required this.listenable, required this.builder});
+
+  @override
+  Widget render({
+    MenuStyle? menuStyle,
+    ButtonStyle? menuItemStyle,
+    ButtonStyle? nestedMenuItemStyle,
+  }) {
+    return ListenableBuilder(
+      listenable: listenable,
+      builder:
+          (context, child) => builder().render(
+            menuStyle: menuStyle,
+            menuItemStyle: menuItemStyle,
+            nestedMenuItemStyle: nestedMenuItemStyle,
+          ),
+    );
+  }
 }

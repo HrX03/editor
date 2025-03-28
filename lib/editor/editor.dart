@@ -40,84 +40,82 @@ class _TextEditorState extends ConsumerState<TextEditor> {
       fit: StackFit.expand,
       children: [
         Positioned.fill(
-          child: EditorContextMenu(
+          child: MenuAnchor(
             controller: menuController,
-            entries: [
-              ContextMenuItem(
-                label: "Copy",
-                onActivate: controller.copy,
-                shortcut: const SingleActivator(LogicalKeyboardKey.keyC, control: true),
-              ),
-              ContextMenuItem(
-                label: "Cut",
-                onActivate: controller.cut,
-                shortcut: const SingleActivator(LogicalKeyboardKey.keyX, control: true),
-              ),
-              ContextMenuListenableWrapper(
-                listenable: canPaste,
-                builder:
-                    () => ContextMenuItem(
-                      label: "Paste",
-                      onActivate: canPaste.value ? controller.paste : null,
-                      shortcut: const SingleActivator(LogicalKeyboardKey.keyV, control: true),
-                    ),
-              ),
-              ContextMenuListenableWrapper(
-                listenable: controller,
-                builder:
-                    () => ContextMenuItem(
-                      label: "Delete",
-                      onActivate:
-                          !controller.selection.isCollapsed ? controller.deleteSelection : null,
-                      shortcut: const SingleActivator(LogicalKeyboardKey.cancel),
-                    ),
-              ),
-              const ContextMenuDivider(),
-              ContextMenuListenableWrapper(
-                listenable: controller,
-                builder:
-                    () => ContextMenuItem(
-                      label: "Undo",
-                      onActivate: controller.canUndo ? controller.undo : null,
-                      shortcut: const SingleActivator(LogicalKeyboardKey.keyZ, control: true),
-                    ),
-              ),
-              ContextMenuListenableWrapper(
-                listenable: controller,
-                builder:
-                    () => ContextMenuItem(
-                      label: "Redo",
-                      onActivate: controller.canRedo ? controller.redo : null,
-                      shortcut: const SingleActivator(
-                        LogicalKeyboardKey.keyZ,
-                        control: true,
-                        shift: true,
+            menuChildren: entriesToWidgetsDefaultStyle(
+              context: context,
+              entries: [
+                ContextMenuItem(
+                  label: "Copy",
+                  onActivate: controller.copy,
+                  shortcut: const SingleActivator(LogicalKeyboardKey.keyC, control: true),
+                ),
+                ContextMenuItem(
+                  label: "Cut",
+                  onActivate: controller.cut,
+                  shortcut: const SingleActivator(LogicalKeyboardKey.keyX, control: true),
+                ),
+                ContextMenuListenableWrapper(
+                  listenable: canPaste,
+                  builder:
+                      () => ContextMenuItem(
+                        label: "Paste",
+                        onActivate: canPaste.value ? controller.paste : null,
+                        shortcut: const SingleActivator(LogicalKeyboardKey.keyV, control: true),
                       ),
-                    ),
-              ),
-              const ContextMenuDivider(),
-              ContextMenuItem(
-                label: "Select all",
-                onActivate: controller.selectAll,
-                shortcut: const SingleActivator(LogicalKeyboardKey.keyA, control: true),
-              ),
-              const ContextMenuDivider(),
-              ContextMenuItem(
-                label: "Find",
-                onActivate: findController.findMode,
-                shortcut: const SingleActivator(LogicalKeyboardKey.keyF, control: true),
-              ),
-              ContextMenuItem(
-                label: "Replace",
-                onActivate: findController.replaceMode,
-                shortcut: const SingleActivator(LogicalKeyboardKey.keyH, control: true),
-              ),
-            ],
-            registerShortcuts: false,
-            menuStyle: getMenuStyle(),
-            menuItemStyle: getMenuItemStyle(Theme.of(context)),
-            nestedMenuItemStyle: getNestedMenuItemStyle(Theme.of(context)),
-            builder: (context, menuController) => const SizedBox(),
+                ),
+                ContextMenuListenableWrapper(
+                  listenable: controller,
+                  builder:
+                      () => ContextMenuItem(
+                        label: "Delete",
+                        onActivate:
+                            !controller.selection.isCollapsed ? controller.deleteSelection : null,
+                        shortcut: const SingleActivator(LogicalKeyboardKey.cancel),
+                      ),
+                ),
+                const ContextMenuDivider(),
+                ContextMenuListenableWrapper(
+                  listenable: controller,
+                  builder:
+                      () => ContextMenuItem(
+                        label: "Undo",
+                        onActivate: controller.canUndo ? controller.undo : null,
+                        shortcut: const SingleActivator(LogicalKeyboardKey.keyZ, control: true),
+                      ),
+                ),
+                ContextMenuListenableWrapper(
+                  listenable: controller,
+                  builder:
+                      () => ContextMenuItem(
+                        label: "Redo",
+                        onActivate: controller.canRedo ? controller.redo : null,
+                        shortcut: const SingleActivator(
+                          LogicalKeyboardKey.keyZ,
+                          control: true,
+                          shift: true,
+                        ),
+                      ),
+                ),
+                const ContextMenuDivider(),
+                ContextMenuItem(
+                  label: "Select all",
+                  onActivate: controller.selectAll,
+                  shortcut: const SingleActivator(LogicalKeyboardKey.keyA, control: true),
+                ),
+                const ContextMenuDivider(),
+                ContextMenuItem(
+                  label: "Find",
+                  onActivate: findController.findMode,
+                  shortcut: const SingleActivator(LogicalKeyboardKey.keyF, control: true),
+                ),
+                ContextMenuItem(
+                  label: "Replace",
+                  onActivate: findController.replaceMode,
+                  shortcut: const SingleActivator(LogicalKeyboardKey.keyH, control: true),
+                ),
+              ],
+            ),
           ),
         ),
         Positioned.fill(
@@ -187,7 +185,6 @@ class _TextEditorState extends ConsumerState<TextEditor> {
                 SingleActivator(LogicalKeyboardKey.backspace, control: true),
               ],
             }),
-            //toolbarController: SelectionToolbarController(),
             style: CodeEditorStyle(
               fontFamily: "FiraCode",
               fontSize: 14,
@@ -196,7 +193,7 @@ class _TextEditorState extends ConsumerState<TextEditor> {
               codeTheme: CodeHighlightTheme(
                 languages: {
                   currFile != null ? extension(currFile.path) : "": CodeHighlightThemeMode(
-                    mode: language ?? langPlaintext,
+                    mode: language?.$2 ?? langPlaintext,
                   ),
                 },
                 theme: Theme.of(context).extension<HighlightThemeExtension>()!.editorTheme,
@@ -515,7 +512,7 @@ class _MenuContextToolbarController extends SelectionToolbarController {
     required LayerLink layerLink,
     required ValueNotifier<bool> visibility,
   }) {
-    menuController.open(position: anchors.primaryAnchor - const Offset(0, 32));
+    menuController.open(position: anchors.primaryAnchor - const Offset(0, 40));
   }
 
   @override

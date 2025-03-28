@@ -15,16 +15,13 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_acrylic: ^1.1.4
-  flutter_highlighter: ^0.1.1
   flutter_riverpod: ^2.5.1
-  google_fonts: ^6.2.1
-  highlight: ^0.7.0
-  highlighting: ^0.9.0+11.8.0
   path: ^1.8.3
   re_editor:
     git: https://github.com/HrX03/re-editor
   re_highlight: ^0.0.3
   recase: ^4.1.0
+  responsive_framework: ^1.5.1
   shared_preferences: ^2.3.2
   system_theme: ^3.1.0
   watcher: ^1.1.0

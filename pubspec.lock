@@ -182,14 +182,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.6.0"
-  equatable:
-    dependency: transitive
-    description:
-      name: equatable
-      sha256: c2b87cb7756efdf69892005af546c56c0b5037f54d2a88269b4f347a505e3ca2
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.0.5"
   fake_async:
     dependency: transitive
     description:
@@ -235,14 +227,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.4"
-  flutter_highlighter:
-    dependency: "direct main"
-    description:
-      name: flutter_highlighter
-      sha256: "93173afd47a9ada53f3176371755e7ea4a1065362763976d06d6adfb4d946e10"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.1.1"
   flutter_plugin_android_lifecycle:
     dependency: transitive
     description:
@@ -285,38 +269,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.2"
-  google_fonts:
-    dependency: "direct main"
-    description:
-      name: google_fonts
-      sha256: b1ac0fe2832c9cc95e5e88b57d627c5e68c223b9657f4b96e1487aa9098c7b82
-      url: "https://pub.dev"
-    source: hosted
-    version: "6.2.1"
-  highlight:
-    dependency: "direct main"
-    description:
-      name: highlight
-      sha256: "5353a83ffe3e3eca7df0abfb72dcf3fa66cc56b953728e7113ad4ad88497cf21"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.7.0"
-  highlighter:
-    dependency: transitive
-    description:
-      name: highlighter
-      sha256: "92180c72b9da8758e1acf39a45aa305a97dcfe2fdc8f3d1d2947c23f2772bfbc"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.1.1"
-  highlighting:
-    dependency: "direct main"
-    description:
-      name: highlighting
-      sha256: "196005ed9c98ee559939fcecd466fa941b9e99b3a93394691b86780ad4da50f3"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.9.0+11.8.0"
   hotreloader:
     dependency: transitive
     description:
@@ -325,22 +277,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.3.0"
-  http:
-    dependency: transitive
-    description:
-      name: http
-      sha256: "759d1a329847dd0f39226c688d3e06a6b8679668e350e2891a6474f8b4bb8525"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.1.0"
-  http_parser:
-    dependency: transitive
-    description:
-      name: http_parser
-      sha256: "2aa08ce0341cc9b354a498388e30986515406668dbcc4f7c950c3e715496693b"
-      url: "https://pub.dev"
-    source: hosted
-    version: "4.0.2"
   isolate_contactor:
     dependency: transitive
     description:
@@ -461,30 +397,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.9.1"
-  path_provider:
-    dependency: transitive
-    description:
-      name: path_provider
-      sha256: "3087813781ab814e4157b172f1a11c46be20179fcc9bea043e0fba36bc0acaa2"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.0.15"
-  path_provider_android:
-    dependency: transitive
-    description:
-      name: path_provider_android
-      sha256: "2cec049d282c7f13c594b4a73976b0b4f2d7a1838a6dd5aaf7bd9719196bee86"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.0.27"
-  path_provider_foundation:
-    dependency: transitive
-    description:
-      name: path_provider_foundation
-      sha256: "916731ccbdce44d545414dd9961f26ba5fbaa74bcbb55237d8e65a623a8c7297"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.2.4"
   path_provider_linux:
     dependency: transitive
     description:
@@ -566,6 +478,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.1.0"
+  responsive_framework:
+    dependency: "direct main"
+    description:
+      name: responsive_framework
+      sha256: a8e1c13d4ba980c60cbf6fa1e9907cd60662bf2585184d7c96ca46c43de91552
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.5.1"
   riverpod:
     dependency: transitive
     description:
@@ -747,14 +667,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.4"
-  tuple:
-    dependency: transitive
-    description:
-      name: tuple
-      sha256: a97ce2013f240b2f3807bcbaf218765b6f301c3eff91092bcfa23a039e7dd151
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.0.2"
   typed_data:
     dependency: transitive
     description:

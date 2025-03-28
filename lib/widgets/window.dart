@@ -5,12 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
+import 'package:responsive_framework/responsive_framework.dart';
 import 'package:window_manager/window_manager.dart';
 
 class WindowBar extends StatefulWidget implements PreferredSizeWidget {
+  final Widget? leading;
   final Widget? title;
 
-  const WindowBar({this.title, super.key});
+  const WindowBar({this.leading, this.title, super.key});
 
   @override
   State<WindowBar> createState() => _WindowBarState();
@@ -45,103 +47,76 @@ class _WindowBarState extends State<WindowBar> with WindowListener {
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
+    final isFull = ResponsiveBreakpoints.of(context).largerThan('COMPACT');
 
     return Stack(
       fit: StackFit.expand,
       children: [
         const DragToMoveArea(child: SizedBox.expand()),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            /* const SizedBox(width: 4),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: SizedBox(
-                  height: double.infinity,
-                  child: Material(
-                    clipBehavior: Clip.antiAlias,
-                    borderRadius: BorderRadius.circular(4),
-                    color: Theme.of(context).colorScheme.surfaceContainer,
-                    surfaceTintColor: Theme.of(context).colorScheme.surfaceTint,
-                    elevation: 2,
-                    child: InkWell(
-                      //onTap: CommandPalette.of(context).open,
-                      child: Center(child: widget.title),
+        Positioned.fill(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              if (widget.leading != null) SizedBox(height: double.infinity, child: widget.leading),
+              if (isFull)
+                const Spacer()
+              else if (widget.title != null)
+                Expanded(
+                  child: SizedBox.expand(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Align(alignment: Alignment.centerLeft, child: widget.title),
                     ),
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(width: 4), */
-            if (widget.title != null) SizedBox(height: double.infinity, child: widget.title),
-            const Spacer(),
-            SizedBox(
-              height: 32,
-              child: Row(
-                children: [
-                  WindowCaptionButton.minimize(
-                    brightness: brightness,
-                    onPressed: () async {
-                      final isMinimized = await windowManager.isMinimized();
-                      if (isMinimized) {
-                        windowManager.restore();
-                      } else {
-                        windowManager.minimize();
-                      }
-                    },
-                  ),
-                  FutureBuilder<bool>(
-                    future: windowManager.isMaximized(),
-                    builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
-                      if (snapshot.data == true) {
-                        return WindowCaptionButton.unmaximize(
+              SizedBox(
+                height: 32,
+                child: Row(
+                  children: [
+                    WindowCaptionButton.minimize(
+                      brightness: brightness,
+                      onPressed: () async {
+                        final isMinimized = await windowManager.isMinimized();
+                        if (isMinimized) {
+                          windowManager.restore();
+                        } else {
+                          windowManager.minimize();
+                        }
+                      },
+                    ),
+                    FutureBuilder<bool>(
+                      future: windowManager.isMaximized(),
+                      builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
+                        if (snapshot.data == true) {
+                          return WindowCaptionButton.unmaximize(
+                            brightness: brightness,
+                            onPressed: () {
+                              windowManager.unmaximize();
+                            },
+                          );
+                        }
+                        return WindowCaptionButton.maximize(
                           brightness: brightness,
                           onPressed: () {
-                            windowManager.unmaximize();
+                            windowManager.maximize();
                           },
                         );
-                      }
-                      return WindowCaptionButton.maximize(
-                        brightness: brightness,
-                        onPressed: () {
-                          windowManager.maximize();
-                        },
-                      );
-                    },
-                  ),
-                  WindowCaptionButton.close(
-                    brightness: brightness,
-                    onPressed: () {
-                      windowManager.close();
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        /* Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: SizedBox(
-              width: 480,
-              height: double.infinity,
-              child: Material(
-                clipBehavior: Clip.antiAlias,
-                borderRadius: BorderRadius.circular(4),
-                color: Theme.of(context).colorScheme.surfaceContainer,
-                surfaceTintColor: Theme.of(context).colorScheme.surfaceTint,
-                elevation: 2,
-                child: InkWell(
-                  //onTap: CommandPalette.of(context).open,
-                  child: Center(child: widget.title),
+                      },
+                    ),
+                    WindowCaptionButton.close(
+                      brightness: brightness,
+                      onPressed: () {
+                        windowManager.close();
+                      },
+                    ),
+                  ],
                 ),
               ),
-            ),
+            ],
           ),
-        ), */
+        ),
+        if (widget.title != null && isFull) Positioned.fill(child: Center(child: widget.title)),
       ],
     );
   }
@@ -161,29 +136,29 @@ class WindowTitle extends ConsumerWidget {
     String fileName = firstLine.substring(0, min(firstLine.length, 40)).trim();
     fileName = fileName.isNotEmpty ? fileName : "Untitled";
 
-    return Row(
-      children: [
-        Text(file != null ? p.basename(file.path) : fileName),
-        const SizedBox(width: 8),
-        Container(
-          width: 8,
-          height: 8,
-          decoration: ShapeDecoration(
-            shape: const CircleBorder(),
-            color: hasEdits ? Theme.of(context).colorScheme.onSurface : Colors.transparent,
-          ),
-          alignment: Alignment.center,
-          child:
-              !hasEdits
-                  ? const Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Positioned(left: -2, top: -3, child: Icon(Icons.expand_more, size: 16)),
-                    ],
-                  )
-                  : null,
+    return IgnorePointer(
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(text: file != null ? p.basename(file.path) : fileName),
+            if (hasEdits)
+              WidgetSpan(
+                alignment: PlaceholderAlignment.baseline,
+                baseline: TextBaseline.alphabetic,
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  margin: const EdgeInsets.only(left: 8),
+                  decoration: ShapeDecoration(
+                    shape: const CircleBorder(),
+                    color: hasEdits ? Theme.of(context).colorScheme.onSurface : Colors.transparent,
+                  ),
+                ),
+              ),
+          ],
         ),
-      ],
+        overflow: TextOverflow.ellipsis,
+      ),
     );
   }
 }
