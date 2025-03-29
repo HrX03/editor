@@ -23,7 +23,11 @@ class PasteListenable extends ChangeNotifier with ClipboardListener {
   @override
   Future<void> onClipboardChanged() async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
-    _pasteAllowed = data != null;
+    final pasteAllowed = data != null;
+    if (pasteAllowed != _pasteAllowed) {
+      _pasteAllowed = data != null;
+      notifyListeners();
+    }
   }
 
   bool get value => _pasteAllowed;

@@ -1,22 +1,19 @@
-import 'dart:io';
-
 import 'package:editor/editor/editor.dart';
 import 'package:editor/internal/environment.dart';
-import 'package:editor/internal/paste.dart';
+import 'package:editor/internal/file_utils.dart';
+import 'package:editor/internal/menus.dart';
 import 'package:editor/internal/preferences.dart';
 import 'package:editor/internal/theme.dart';
 import 'package:editor/widgets/context_menu.dart';
 import 'package:editor/widgets/toolbar.dart';
 import 'package:editor/widgets/window.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_window_close/flutter_window_close.dart';
 import 'package:re_editor/re_editor.dart';
 import 'package:re_highlight/styles/atom-one-dark.dart';
 import 'package:re_highlight/styles/atom-one-light.dart';
-import 'package:recase/recase.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:system_theme/system_theme.dart';
@@ -40,28 +37,25 @@ Future<void> main(List<String> args) async {
     backgroundColor: Colors.transparent,
   );
   await windowManager.waitUntilReadyToShow(options, () async {
-    /* if (platformSupportsWindowEffects) {
-      await Window.setEffect(effect: WindowEffect.mica);
-    } */
     await windowManager.show();
     await windowManager.focus();
   });
 
-  final file = args.isNotEmpty ? File(args.first) : null;
+  final path = args.isNotEmpty ? args.first : null;
   final sharedPreferences = await SharedPreferences.getInstance();
 
   runApp(
     ProviderScope(
       overrides: [sharedPreferencesProvider.overrideWithValue(sharedPreferences)],
-      child: MainApp(file: file),
+      child: MainApp(path: path),
     ),
   );
 }
 
 class MainApp extends ConsumerWidget {
-  final File? file;
+  final String? path;
 
-  const MainApp({this.file, super.key});
+  const MainApp({this.path, super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -90,7 +84,7 @@ class MainApp extends ConsumerWidget {
                   const Breakpoint(start: 641, end: double.infinity, name: 'FULL'),
                 ],
               ),
-          home: _EditorApp(initialFile: file),
+          home: _EditorApp(initialPath: path),
         );
       },
     );
@@ -98,9 +92,9 @@ class MainApp extends ConsumerWidget {
 }
 
 class _EditorApp extends ConsumerStatefulWidget {
-  final File? initialFile;
+  final String? initialPath;
 
-  const _EditorApp({this.initialFile});
+  const _EditorApp({this.initialPath});
 
   @override
   ConsumerState<_EditorApp> createState() => _EditorAppState();
@@ -110,17 +104,16 @@ class _EditorAppState extends ConsumerState<_EditorApp> {
   @override
   void initState() {
     super.initState();
-    if (widget.initialFile == null) return;
-    ref.read(editorEnvironmentProvider.notifier).openFile(widget.initialFile!);
+    if (widget.initialPath == null) return;
+    ref.read(editorEnvironmentProvider.notifier).openFile(widget.initialPath!);
+
+    FlutterWindowClose.setWindowShouldCloseHandler(() => saveSafeGuard(context, ref));
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(editorEnvironmentProvider).value!;
     final environment = ref.watch(editorEnvironmentProvider.notifier);
-    final controller = ref.watch(editorControllerProvider);
-    final canPaste = ref.watch(pasteContentsProvider);
-    final findController = ref.watch(findControllerProvider);
     final enableWindowEffects =
         platformSupportsWindowEffects && ref.watch(enableWindowEffectsProvider);
 
@@ -141,23 +134,7 @@ class _EditorAppState extends ConsumerState<_EditorApp> {
                     textStyle: Theme.of(context).primaryTextTheme.bodySmall,
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                   ),
-                  children: [
-                    ContextMenuItem(
-                      label: "Create new",
-                      onActivate: environment.closeFile,
-                      shortcut: const SingleActivator(LogicalKeyboardKey.keyN, control: true),
-                    ),
-                    ContextMenuItem(
-                      label: "Open from disk",
-                      onActivate: () async {
-                        final result = await FilePicker.platform.pickFiles();
-                        if (result == null) return;
-
-                        environment.openFile(File(result.files.first.path!));
-                      },
-                      shortcut: const SingleActivator(LogicalKeyboardKey.keyO, control: true),
-                    ),
-                  ],
+                  children: getFileMenuEntries(context, ref),
                 ),
                 ContextMenuNested(
                   label: "Edit",
@@ -166,79 +143,7 @@ class _EditorAppState extends ConsumerState<_EditorApp> {
                     textStyle: Theme.of(context).primaryTextTheme.bodySmall,
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                   ),
-                  children: [
-                    ContextMenuListenableWrapper(
-                      listenable: controller,
-                      builder:
-                          () => ContextMenuItem(
-                            label: "Undo",
-                            onActivate: controller.canUndo ? controller.undo : null,
-                            shortcut: const SingleActivator(LogicalKeyboardKey.keyZ, control: true),
-                          ),
-                    ),
-                    ContextMenuListenableWrapper(
-                      listenable: controller,
-                      builder:
-                          () => ContextMenuItem(
-                            label: "Redo",
-                            onActivate: controller.canRedo ? controller.redo : null,
-                            shortcut: const SingleActivator(
-                              LogicalKeyboardKey.keyZ,
-                              control: true,
-                              shift: true,
-                            ),
-                          ),
-                    ),
-                    const ContextMenuDivider(),
-                    ContextMenuItem(
-                      label: "Copy",
-                      onActivate: controller.copy,
-                      shortcut: const SingleActivator(LogicalKeyboardKey.keyC, control: true),
-                    ),
-                    ContextMenuItem(
-                      label: "Cut",
-                      onActivate: controller.cut,
-                      shortcut: const SingleActivator(LogicalKeyboardKey.keyX, control: true),
-                    ),
-                    ContextMenuListenableWrapper(
-                      listenable: canPaste,
-                      builder:
-                          () => ContextMenuItem(
-                            label: "Paste",
-                            onActivate: canPaste.value ? controller.paste : null,
-                            shortcut: const SingleActivator(LogicalKeyboardKey.keyV, control: true),
-                          ),
-                    ),
-                    ContextMenuListenableWrapper(
-                      listenable: controller,
-                      builder:
-                          () => ContextMenuItem(
-                            label: "Delete",
-                            onActivate:
-                                !controller.selection.isCollapsed
-                                    ? controller.deleteSelection
-                                    : null,
-                            shortcut: const SingleActivator(LogicalKeyboardKey.cancel),
-                          ),
-                    ),
-                    const ContextMenuDivider(),
-                    ContextMenuItem(
-                      label: "Select all",
-                      onActivate: controller.selectAll,
-                      shortcut: const SingleActivator(LogicalKeyboardKey.keyA, control: true),
-                    ),
-                    const ContextMenuDivider(),
-                    ContextMenuItem(
-                      label: "Find",
-                      onActivate: findController.findMode,
-                      shortcut: const SingleActivator(LogicalKeyboardKey.keyF, control: true),
-                    ),
-                    ContextMenuItem(
-                      label: "Replace",
-                      onActivate: findController.replaceMode,
-                      shortcut: const SingleActivator(LogicalKeyboardKey.keyH, control: true),
-                    ),
-                  ],
+                  children: getEditMenuEntries(ref),
                 ),
                 ContextMenuNested(
                   label: "View",
@@ -247,41 +152,7 @@ class _EditorAppState extends ConsumerState<_EditorApp> {
                     textStyle: Theme.of(context).primaryTextTheme.bodySmall,
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                   ),
-                  children: [
-                    ContextMenuItem(
-                      label: "Line highlighting",
-                      trailing:
-                          ref.watch(enableLineHighlightingProvider)
-                              ? const Icon(Icons.done, size: 16)
-                              : const SizedBox(width: 16),
-                      onActivate: () {
-                        final value = ref.read(enableLineHighlightingProvider);
-                        ref.read(enableLineHighlightingProvider.notifier).set(!value);
-                      },
-                    ),
-                    ContextMenuItem(
-                      label: "Line number column",
-                      trailing:
-                          ref.watch(enableLineNumberColumnProvider)
-                              ? const Icon(Icons.done, size: 16)
-                              : const SizedBox(width: 16),
-                      onActivate: () {
-                        final value = ref.read(enableLineNumberColumnProvider);
-                        ref.read(enableLineNumberColumnProvider.notifier).set(!value);
-                      },
-                    ),
-                    ContextMenuItem(
-                      label: "Word wrap",
-                      trailing:
-                          ref.watch(enableLineWrapProvider)
-                              ? const Icon(Icons.done, size: 16)
-                              : const SizedBox(width: 16),
-                      onActivate: () {
-                        final value = ref.read(enableLineWrapProvider);
-                        ref.read(enableLineWrapProvider.notifier).set(!value);
-                      },
-                    ),
-                  ],
+                  children: getViewMenuEntries(ref),
                 ),
                 ContextMenuNested(
                   label: "Preferences",
@@ -290,36 +161,7 @@ class _EditorAppState extends ConsumerState<_EditorApp> {
                     textStyle: Theme.of(context).primaryTextTheme.bodySmall,
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                   ),
-                  children: [
-                    ContextMenuNested(
-                      label: "Theme mode",
-                      children: [
-                        for (final mode in ThemeMode.values)
-                          ContextMenuItem(
-                            label: mode.name.pascalCase,
-                            trailing:
-                                ref.watch(themeModeProvider) == mode
-                                    ? const Icon(Icons.done, size: 16)
-                                    : const SizedBox(width: 16),
-                            onActivate: () {
-                              ref.read(themeModeProvider.notifier).set(mode);
-                            },
-                          ),
-                      ],
-                    ),
-                    if (platformSupportsWindowEffects)
-                      ContextMenuItem(
-                        label: "Enable window effects",
-                        trailing:
-                            ref.watch(enableWindowEffectsProvider)
-                                ? const Icon(Icons.done, size: 16)
-                                : const SizedBox(width: 16),
-                        onActivate: () {
-                          final value = ref.read(enableWindowEffectsProvider);
-                          ref.read(enableWindowEffectsProvider.notifier).set(!value);
-                        },
-                      ),
-                  ],
+                  children: getPreferencesMenuEntries(ref),
                 ),
               ],
               menuStyle: getMenuStyle(),
@@ -330,21 +172,21 @@ class _EditorAppState extends ConsumerState<_EditorApp> {
           title: const WindowTitle(),
         ),
         body:
-            state.encodingIssue == false
+            state.fileInfo == null || (state.fileInfo != null && state.fileRawContents != null)
                 ? const TextEditor()
                 : SizedBox.expand(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Text("Could not open file"),
-                      if (state.allowsMalformed)
+                      if (state.allowMalformedCharacters)
                         const Text("Try changing the file encoding")
                       else
                         const Text("Try reopening the file with malformed characters"),
                       const SizedBox(height: 16),
                       TextButton(
                         onPressed:
-                            !state.allowsMalformed
+                            !state.allowMalformedCharacters
                                 ? () {
                                   environment.reopenMalformed();
                                 }

@@ -1,44 +1,19 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
+import 'dart:math';
 
-import 'package:collection/collection.dart';
-import 'package:editor/internal/extensions.dart';
+import 'package:editor/internal/file.dart' as file;
+import 'package:editor/internal/preferences.dart';
 import 'package:editor/internal/value.dart';
-import 'package:enough_convert/enough_convert.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:re_editor/re_editor.dart';
-import 'package:re_highlight/languages/all.dart';
-import 'package:re_highlight/re_highlight.dart';
-
-enum EncodingType {
-  utf8("UTF-8"),
-  ascii("ASCII"),
-  ansi("ANSI");
-
-  final String displayName;
-
-  const EncodingType(this.displayName);
-
-  Encoding getEncoding({bool allowMalformed = false}) {
-    return switch (this) {
-      EncodingType.utf8 => Utf8Codec(allowMalformed: allowMalformed),
-      EncodingType.ascii => AsciiCodec(allowInvalid: allowMalformed),
-      EncodingType.ansi => Windows1252Codec(allowInvalid: allowMalformed),
-    };
-  }
-}
 
 typedef EditorState =
     ({
-      File? file,
-      String? fileContents,
-      (String, Mode)? fileLanguage,
-      EncodingType encoding,
-      bool allowsMalformed,
-      bool encodingIssue,
+      file.FileInfo? fileInfo,
+      String? fileRawContents,
+      file.FileLanguage? editorLanguage,
+      bool allowMalformedCharacters,
     });
 
 final editorControllerProvider = ChangeNotifierProvider((ref) {
@@ -57,52 +32,61 @@ final findControllerProvider = ChangeNotifierProvider((ref) {
   return controller;
 });
 
-final undoControllerProvider = ChangeNotifierProvider((ref) {
-  final controller = ref.watch(
-    editorEnvironmentProvider.notifier.select((value) => value._undoController),
-  );
-
-  return controller;
-});
-
-final fileLanguageProvider = Provider((ref) {
+final editorLanguageProvider = Provider((ref) {
   final fileLanguage = ref.watch(
-    editorEnvironmentProvider.select((value) => value.value!.fileLanguage),
+    editorEnvironmentProvider.select((value) => value.value!.editorLanguage),
   );
 
   return fileLanguage;
 });
 
 final encodingProvider = Provider((ref) {
-  final encoding = ref.watch(editorEnvironmentProvider.select((value) => value.value!.encoding));
+  final encoding = ref.watch(
+    editorEnvironmentProvider.select((value) => value.value!.fileInfo?.encoding),
+  );
 
   return encoding;
 });
 
-final fileProvider = Provider((ref) {
-  final file = ref.watch(editorEnvironmentProvider.select((value) => value.value!.file));
+final pathProvider = Provider((ref) {
+  final path = ref.watch(editorEnvironmentProvider.select((value) => value.value!.fileInfo?.path));
 
-  return file;
+  return path;
+});
+
+final fileInfoProvider = Provider((ref) {
+  final info = ref.watch(editorEnvironmentProvider.select((value) => value.value!.fileInfo));
+
+  return info;
 });
 
 final fileContentsProvider = Provider((ref) {
-  final file = ref.watch(editorEnvironmentProvider.select((value) => value.value!.fileContents));
+  final contents = ref.watch(
+    editorEnvironmentProvider.select((value) => value.value!.fileRawContents),
+  );
 
-  return file;
+  return contents;
+});
+
+final fileNameProvider = Provider((ref) {
+  final file = ref.watch(fileInfoProvider);
+  final textController = ref.watch(editorControllerProvider);
+
+  final firstLine = textController.codeLines.first.text;
+
+  String fileName = firstLine.substring(0, min(firstLine.length, 40)).trim();
+  fileName = fileName.isNotEmpty ? fileName : "Untitled";
+
+  return file != null ? p.basename(file.path) : fileName;
 });
 
 final hasEditsProvider = Provider((ref) {
   final controller = ref.watch(editorControllerProvider);
-  final fileContents = ref.watch(
-    editorEnvironmentProvider.select((value) => value.value!.fileContents),
-  );
+  final fileContents = ref.watch(fileContentsProvider);
 
   if (fileContents == null) return controller.text.isNotEmpty;
 
-  final controllerText = EditorEnvironment._normalizeLineBreaks(controller.text);
-  final fileContentsNormalized = EditorEnvironment._normalizeLineBreaks(fileContents);
-
-  return controllerText != fileContentsNormalized;
+  return controller.text != fileContents;
 });
 
 final editorEnvironmentProvider = AsyncNotifierProvider<EditorEnvironment, EditorState>(
@@ -112,41 +96,49 @@ final editorEnvironmentProvider = AsyncNotifierProvider<EditorEnvironment, Edito
 class EditorEnvironment extends AsyncNotifier<EditorState> {
   final _textController = CodeLineEditingController();
   late final _findController = CodeFindController(_textController);
-  final _undoController = UndoHistoryController();
 
   @override
   EditorState build() => (
-    file: null,
-    fileContents: null,
-    fileLanguage: null,
-    encoding: EncodingType.utf8,
-    allowsMalformed: false,
-    encodingIssue: false,
+    fileInfo: null,
+    fileRawContents: null,
+    editorLanguage: null,
+    allowMalformedCharacters: false,
   );
 
-  Future<void> openFile(File file, {EncodingType encoding = EncodingType.utf8}) async {
-    final editorState = await _loadFile(file, encoding: encoding);
+  Future<void> openFile(String path, {file.EncodingType encoding = file.EncodingType.utf8}) async {
+    final editorState = await _loadFile(path, encoding: encoding);
+
+    List<String> recentFiles = ref.read(recentFilesProvider);
+    if (recentFiles.contains(path)) {
+      recentFiles.remove(path);
+    }
+    recentFiles.add(path);
+    if (recentFiles.length > 10) {
+      recentFiles = recentFiles.sublist(0, 10);
+    }
+    ref.read(recentFilesProvider.notifier).set(recentFiles);
+
     state = AsyncData(editorState);
   }
 
   Future<void> reopenMalformed() async {
-    if (state.value == null || state.value?.file == null) {
+    if (state.value == null || state.value?.fileInfo == null) {
       throw Exception("No file has been opened");
     }
 
-    final file = state.value!.file!;
-    final encoding = state.value!.encoding;
+    final file = state.value!.fileInfo!.path;
+    final encoding = state.value!.fileInfo!.encoding;
 
     final editorState = await _loadFile(file, encoding: encoding, allowMalformed: true);
     state = AsyncData(editorState);
   }
 
-  Future<void> reopenWithEncoding(EncodingType encoding) async {
-    if (state.value == null || state.value?.file == null) {
+  Future<void> reopenWithEncoding(file.EncodingType encoding) async {
+    if (state.value == null || state.value?.fileInfo == null) {
       throw Exception("No file has been opened");
     }
 
-    final file = state.value!.file!;
+    final file = state.value!.fileInfo!.path;
 
     final editorState = await _loadFile(file, encoding: encoding);
     state = AsyncData(editorState);
@@ -155,97 +147,84 @@ class EditorEnvironment extends AsyncNotifier<EditorState> {
   void closeFile() {
     _textController.text = "";
     _textController.selection = const CodeLineSelection.collapsed(index: 0, offset: 0);
-    _undoController.value = UndoHistoryValue.empty;
 
     state = const AsyncData((
-      file: null,
-      fileContents: null,
-      fileLanguage: null,
-      encoding: EncodingType.utf8,
-      allowsMalformed: false,
-      encodingIssue: false,
+      fileInfo: null,
+      fileRawContents: null,
+      editorLanguage: null,
+      allowMalformedCharacters: false,
     ));
   }
 
-  void setLanguage((String, Mode)? language) {
+  Future<void> saveFile(String path) async {
+    final currState = state.value!;
+    final encoding = currState.fileInfo?.encoding ?? file.EncodingType.utf8;
+
+    await file.saveFile(path, _textController.text, encoding: encoding);
+
+    state = AsyncData(
+      currState.copyWith(
+        fileInfo: Value(
+          file.FileInfo(path: path, detectedLanguage: currState.editorLanguage, encoding: encoding),
+        ),
+        fileRawContents: Value(_textController.text),
+      ),
+    );
+  }
+
+  Future<void> saveFileCopy(String path) async {
+    final currState = state.value!;
+
+    await file.saveFile(
+      path,
+      _textController.text,
+      encoding: currState.fileInfo?.encoding ?? file.EncodingType.utf8,
+    );
+  }
+
+  void setLanguage(file.FileLanguage? language) {
     final currState = state.value!;
     state = AsyncData(
-      currState.copyWith(fileLanguage: language != null ? Value(language) : const Value.erase()),
+      currState.copyWith(editorLanguage: language != null ? Value(language) : const Value.erase()),
     );
   }
 
   Future<EditorState> _loadFile(
-    File file, {
-    EncodingType encoding = EncodingType.utf8,
+    String path, {
+    file.EncodingType encoding = file.EncodingType.utf8,
     bool allowMalformed = false,
   }) async {
-    String? fileContents;
-    bool encodingIssue = false;
+    final (info, contents) = await file.openFile(
+      path,
+      encoding: encoding,
+      allowMalformed: allowMalformed,
+    );
 
-    try {
-      fileContents = await file.readAsString(
-        encoding: encoding.getEncoding(allowMalformed: allowMalformed),
-      );
-    } on FileSystemException {
-      fileContents = null;
-      encodingIssue = true;
-    }
-
-    _textController.text = _normalizeLineBreaks(fileContents);
+    _textController.text = contents ?? "";
     _textController.selection = const CodeLineSelection.collapsed(index: 0, offset: 0);
-    _undoController.value = UndoHistoryValue.empty;
-
-    final language = _loadEditorLanguage(file);
-    // _textController.language = language;
 
     return (
-      file: file,
-      fileContents: fileContents,
-      fileLanguage: language,
-      encoding: encoding,
-      allowsMalformed: allowMalformed,
-      encodingIssue: encodingIssue,
+      fileInfo: info,
+      fileRawContents: contents,
+      editorLanguage: info.detectedLanguage,
+      allowMalformedCharacters: allowMalformed,
     );
-  }
-
-  static String _normalizeLineBreaks(String? contents) {
-    if (contents == null) return "";
-
-    final lines = const LineSplitter().convert(contents);
-    return lines.join("\n");
-  }
-
-  (String, Mode)? _loadEditorLanguage(File? file) {
-    final highlight = Highlight();
-    highlight.registerLanguages(builtinAllLanguages);
-    final langForExt = extensions[p.extension(file!.path)];
-    final entry = builtinAllLanguages.entries.firstWhereOrNull(
-      (e) =>
-          e.value.name == langForExt?.first ||
-          e.value.name == p.extension(file.path).substring(1) ||
-          e.key == langForExt?.first ||
-          e.key == p.extension(file.path).substring(1),
-    );
-    return entry != null ? (entry.key, entry.value) : null;
   }
 }
 
 extension on EditorState {
   EditorState copyWith({
-    Value<File?>? file,
-    Value<String?>? fileContents,
-    Value<(String, Mode)?>? fileLanguage,
-    Value<EncodingType?>? encoding,
-    Value<bool>? allowsMalformed,
-    Value<bool>? encodingIssue,
+    Value<file.FileInfo?>? fileInfo,
+    Value<String?>? fileRawContents,
+    Value<file.FileLanguage?>? editorLanguage,
+    Value<bool>? allowMalformedCharacters,
   }) {
     return (
-      file: Value.handleValue(file, null, this.file),
-      fileContents: Value.handleValue(fileContents, null, this.fileContents),
-      fileLanguage: Value.handleValue(fileLanguage, null, this.fileLanguage),
-      encoding: Value.handleValue(encoding, EncodingType.utf8) ?? this.encoding,
-      allowsMalformed: Value.handleValue<bool>(allowsMalformed, false) ?? this.allowsMalformed,
-      encodingIssue: Value.handleValue<bool>(encodingIssue, false) ?? this.encodingIssue,
+      fileInfo: Value.handleValue(fileInfo, null, this.fileInfo),
+      fileRawContents: Value.handleValue(fileRawContents, null, this.fileRawContents),
+      editorLanguage: Value.handleValue(editorLanguage, null, this.editorLanguage),
+      allowMalformedCharacters:
+          Value.handleValue(allowMalformedCharacters, false, this.allowMalformedCharacters)!,
     );
   }
 }

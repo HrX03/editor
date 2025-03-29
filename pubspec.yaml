@@ -16,6 +16,7 @@ dependencies:
     sdk: flutter
   flutter_acrylic: ^1.1.4
   flutter_riverpod: ^2.5.1
+  flutter_window_close: ^1.2.0
   path: ^1.8.3
   re_editor:
     git: https://github.com/HrX03/re-editor

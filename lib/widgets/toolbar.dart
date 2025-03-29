@@ -1,5 +1,6 @@
 import 'package:editor/internal/environment.dart';
 import 'package:editor/internal/extensions.dart';
+import 'package:editor/internal/file.dart';
 import 'package:editor/internal/theme.dart';
 import 'package:editor/widgets/context_menu.dart';
 import 'package:flutter/material.dart';
@@ -12,7 +13,7 @@ class EditorToolbar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.watch(editorControllerProvider);
-    final (currLanguageKey, currLanguage) = ref.watch(fileLanguageProvider) ?? (null, null);
+    final (currLanguageKey, currLanguage) = ref.watch(editorLanguageProvider) ?? (null, null);
     final currEncoding = ref.watch(encodingProvider);
 
     return Padding(
@@ -50,7 +51,7 @@ class EditorToolbar extends ConsumerWidget {
             children: entriesToWidgetsDefaultStyle(
               entries: [
                 ContextMenuNested(
-                  label: currEncoding.displayName,
+                  label: currEncoding?.displayName ?? "UTF8",
                   style: TextButton.styleFrom(
                     minimumSize: const Size(0, 36),
                     textStyle: Theme.of(context).primaryTextTheme.bodySmall,

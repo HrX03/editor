@@ -127,7 +127,7 @@ class WindowTitle extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final file = ref.watch(editorEnvironmentProvider.select((value) => value.value!.file));
+    final file = ref.watch(fileInfoProvider);
     final textController = ref.watch(editorControllerProvider);
     final hasEdits = ref.watch(hasEditsProvider);
 

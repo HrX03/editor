@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-typedef PrefNotifier<R, T>
-    = NotifierProvider<SharedPreferencesNotifier<R, T>, R>;
+typedef PrefNotifier<R, T> = NotifierProvider<SharedPreferencesNotifier<R, T>, R>;
 
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
   throw UnimplementedError();
@@ -51,6 +50,14 @@ final enableLineWrapProvider = PrefNotifier<bool, bool>(
   ),
 );
 
+final recentFilesProvider = PrefNotifier<List<String>, List<String>>(
+  () => SharedPreferencesNotifier(
+    defaultValue: [],
+    key: "recent_files",
+    type: SharedPreferencesType.stringList,
+  ),
+);
+
 class SharedPreferencesNotifier<R, T> extends Notifier<R> {
   final R _defaultValue;
   final SharedPreferencesType<T> _type;
@@ -62,11 +69,11 @@ class SharedPreferencesNotifier<R, T> extends Notifier<R> {
     required R defaultValue,
     required SharedPreferencesType<T> type,
     required String key,
-  })  : _key = key,
-        _type = type,
-        _defaultValue = defaultValue,
-        _encode = ((v) => v as T),
-        _decode = ((v) => v as R);
+  }) : _key = key,
+       _type = type,
+       _defaultValue = defaultValue,
+       _encode = ((v) => v as T),
+       _decode = ((v) => v as R);
 
   SharedPreferencesNotifier.custom({
     required R defaultValue,
@@ -74,11 +81,11 @@ class SharedPreferencesNotifier<R, T> extends Notifier<R> {
     required String key,
     required T Function(R) encode,
     required R Function(T) decode,
-  })  : _encode = encode,
-        _decode = decode,
-        _key = key,
-        _type = type,
-        _defaultValue = defaultValue;
+  }) : _encode = encode,
+       _decode = decode,
+       _key = key,
+       _type = type,
+       _defaultValue = defaultValue;
 
   @override
   R build() {
@@ -94,12 +101,13 @@ class SharedPreferencesNotifier<R, T> extends Notifier<R> {
   T? _get() {
     final sharedPreferences = ref.watch(sharedPreferencesProvider);
     return switch (_type) {
-      SharedPreferencesType.boolean => sharedPreferences.getBool(_key),
-      SharedPreferencesType.string => sharedPreferences.getString(_key),
-      SharedPreferencesType.integer => sharedPreferences.getInt(_key),
-      SharedPreferencesType.float => sharedPreferences.getDouble(_key),
-      SharedPreferencesType.stringList => sharedPreferences.getStringList(_key),
-    } as T?;
+          SharedPreferencesType.boolean => sharedPreferences.getBool(_key),
+          SharedPreferencesType.string => sharedPreferences.getString(_key),
+          SharedPreferencesType.integer => sharedPreferences.getInt(_key),
+          SharedPreferencesType.float => sharedPreferences.getDouble(_key),
+          SharedPreferencesType.stringList => sharedPreferences.getStringList(_key),
+        }
+        as T?;
   }
 
   void _set(T value) {
